@@ -60,3 +60,21 @@ export const updateAnteNatalDelivery = async (patientId, recordId, data) => {
   );
   return response.data?.data || response.data;
 };
+
+export const unwrapAnteNatalRecords = (records, { isViewingDependant = false, dependantId = null } = {}) => {
+  const unwrapped = Array.isArray(records)
+    ? (records.some((r) => r?.presentPregnancy || r?.presentPregnancyHistories || r?.medicalHistories)
+        ? records.map((r, i) => ({ ...r, __originalIndex: r.__originalIndex ?? i }))
+        : records.flatMap((w) =>
+            (w.anteNatalRecords || []).map((r, i) => ({ ...r, __wrapperId: w._id, __originalIndex: i }))
+          ))
+    : (Array.isArray(records?.anteNatalRecords)
+        ? records.anteNatalRecords.map((r, i) => ({ ...r, __originalIndex: i }))
+        : []);
+
+  const scoped = isViewingDependant && dependantId
+    ? unwrapped.filter((r) => String(r?.dependantId || '') === String(dependantId))
+    : unwrapped.filter((r) => !r?.dependantId);
+
+  return [...scoped].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+};

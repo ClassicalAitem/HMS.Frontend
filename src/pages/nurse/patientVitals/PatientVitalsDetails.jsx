@@ -43,6 +43,7 @@ import KolakLoader from "@/components/common/KolakLoader";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
 import ConsultationDetailModal from "@/components/modals/ConsultationDetailModal";
+import AntenatalDetailModal from "@/components/modals/AntenatalDetailModal";
 
 
 const PatientVitalsDetails = () => {
@@ -83,6 +84,7 @@ const PatientVitalsDetails = () => {
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(true);
   const [selectedAntenatalRecord, setSelectedAntenatalRecord] = useState(null);
+  const [selectedAntenatalModal, setSelectedAntenatalModal] = useState(null);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   // Doctor's consultation data
   const [consultations, setConsultations] = useState([]);
@@ -947,6 +949,72 @@ useEffect(() => {
 
             <details className="group rounded-lg border border-base-300 bg-base-100">
               <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
+                <span>Antenatal ({antenatalRecords.length})</span>
+                <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="border-t border-base-200 p-4">
+                {antenatalLoading ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
+                  </div>
+                ) : antenatalRecords.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-base-content/50">No antenatal records found.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {antenatalRecords.map((rec, idx) => {
+                      const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy;
+                      const staffName = rec.createdByName || rec.doctorName || rec.nurseName || '';
+                      return (
+                        <article
+                          key={rec.id || rec._id || idx}
+                          className="rounded-xl border border-base-300 bg-base-100 p-4 transition-all hover:border-accent/50 hover:bg-base-200/40 cursor-pointer shadow-sm"
+                          onClick={() => setSelectedAntenatalModal(rec)}
+                        >
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="badge badge-accent badge-sm font-medium">Antenatal</span>
+                              {staffName && (
+                                <span className="text-xs font-medium text-base-content/80">
+                                  {staffName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-base-content/50">
+                                {rec.createdAt ? formatNigeriaDateTime(rec.createdAt) : '—'}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-accent btn-outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAntenatalModal(rec);
+                                }}
+                              >
+                                View Details
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                            <div>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">EDD</span>
+                              <p className="font-medium text-base-content mt-0.5">{present?.EDD ? formatNigeriaDate(present.EDD) : '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Gestational Age</span>
+                              <p className="font-semibold text-accent mt-0.5">{present?.durationOfPregnancyInWeek != null ? `${present.durationOfPregnancyInWeek} weeks` : '—'}</p>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </details>
+
+            <details className="group rounded-lg border border-base-300 bg-base-100">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
                 <span>Appointments ({appointments.length})</span>
                 <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
               </summary>
@@ -1401,6 +1469,15 @@ useEffect(() => {
             <ConsultationDetailModal
               consultation={selectedConsultation}
               onClose={() => setSelectedConsultation(null)}
+            />
+          )}
+
+          {selectedAntenatalModal && (
+            <AntenatalDetailModal
+              antenatalRecord={selectedAntenatalModal}
+              patientId={patientId}
+              patient={patient}
+              onClose={() => setSelectedAntenatalModal(null)}
             />
           )}
 

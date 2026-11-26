@@ -5,15 +5,16 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
 import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI'
 import { getConsultations } from '@/services/api/consultationAPI'
+import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/services/api/anteNatalAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
 import { getErrorMessage } from '@/utils/errorHandler'
-import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal } from '@/components/modals'
+import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
-import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import SendPatientModal from '@/components/modals/SendPatientModal'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import KolakLoader from '@/components/common/KolakLoader'
@@ -54,6 +55,9 @@ const IncomingDetails = () => {
   const [consultations, setConsultations] = useState([])
   const [consultationsLoading, setConsultationsLoading] = useState(true)
   const [selectedConsultation, setSelectedConsultation] = useState(null)
+  const [antenatalRecords, setAntenatalRecords] = useState([])
+  const [antenatalLoading, setAntenatalLoading] = useState(true)
+  const [selectedAntenatal, setSelectedAntenatal] = useState(null)
   const [latestVital, setLatestVital] = useState(null)
   const [vitalsLoading, setVitalsLoading] = useState(true)
   const { refreshQueueCount } = useNotifications()
@@ -113,6 +117,32 @@ const IncomingDetails = () => {
     }
 
     loadConsultations()
+    return () => {
+      mounted = false
+    }
+  }, [patientId, incomingDependantId, isViewingDependant])
+
+  useEffect(() => {
+    let mounted = true
+    const loadAntenatal = async () => {
+      if (!patientId) {
+        setAntenatalRecords([])
+        setAntenatalLoading(false)
+        return
+      }
+      setAntenatalLoading(true)
+      try {
+        const res = await getAnteNatalRecordByPatientId(patientId)
+        const scoped = unwrapAnteNatalRecords(res, { isViewingDependant, dependantId: incomingDependantId })
+        if (mounted) setAntenatalRecords(scoped)
+      } catch (err) {
+        console.error('Failed to load antenatal records:', err)
+        if (mounted) setAntenatalRecords([])
+      } finally {
+        if (mounted) setAntenatalLoading(false)
+      }
+    }
+    loadAntenatal()
     return () => {
       mounted = false
     }
@@ -893,6 +923,51 @@ const getDispenseInfo = (med) => {
             )}
           </section>
 
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-base-content">Antenatal</h2>
+            {antenatalLoading ? (
+              <div className="py-8 flex justify-center">
+                <KolakLoader />
+              </div>
+            ) : antenatalRecords.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">
+                No antenatal records found.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {antenatalRecords.map((rec, idx) => {
+                  const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy
+                  return (
+                    <button
+                      key={rec.id || rec._id || idx}
+                      type="button"
+                      onClick={() => setSelectedAntenatal(rec)}
+                      className="rounded-lg border border-base-300 bg-base-100 p-4 text-left transition-colors hover:border-accent/50 hover:bg-base-200/60"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="badge badge-accent badge-sm">Antenatal</span>
+                        <span className="text-xs text-base-content/40">
+                          {rec.createdAt ? formatNigeriaDateTime(rec.createdAt) : '—'}
+                        </span>
+                      </div>
+                      <p className="line-clamp-1 text-sm font-medium">
+                        {present?.EDD ? `EDD: ${formatNigeriaDate(present.EDD)}` : `Antenatal Record #${antenatalRecords.length - idx}`}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {present?.durationOfPregnancyInWeek != null && (
+                          <span className="badge badge-ghost badge-xs">{present.durationOfPregnancyInWeek} wks</span>
+                        )}
+                        {(rec.createdByName || rec.doctorName || rec.nurseName) && (
+                          <span className="badge badge-outline badge-xs">{rec.createdByName || rec.doctorName || rec.nurseName}</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
           {isViewingDependant && incomingDependantSnapshot && (
             <div className="text-sm text-base-content/70 mb-3">
               Viewing prescriptions for <strong>{`${incomingDependantSnapshot.firstName || ''} ${incomingDependantSnapshot.lastName || ''}`.trim()}</strong>
@@ -977,6 +1052,15 @@ const getDispenseInfo = (med) => {
             consultation={selectedConsultation}
             prescriptions={selectedConsultation.prescriptions || []}
             onClose={() => setSelectedConsultation(null)}
+          />
+        )}
+
+        {selectedAntenatal && (
+          <AntenatalDetailModal
+            antenatalRecord={selectedAntenatal}
+            patientId={patientId}
+            patient={patient}
+            onClose={() => setSelectedAntenatal(null)}
           />
         )}
       </div>

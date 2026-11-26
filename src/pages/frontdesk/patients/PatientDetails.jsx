@@ -28,6 +28,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import { AppointmentDetailsModal } from '@/components/modals';
 import { getConsultations } from '@/services/api/consultationAPI';
+import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/services/api/anteNatalAPI';
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import {
@@ -38,7 +39,7 @@ import {
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { getDependantById } from '@/services/api/dependantAPI';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
-import { ConsultationDetailModal } from '@/components/modals';
+import { ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -63,6 +64,9 @@ const PatientDetails = () => {
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(true);
   const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(true);
+  const [selectedAntenatal, setSelectedAntenatal] = useState(null);
   const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
@@ -92,12 +96,14 @@ const PatientDetails = () => {
       const loadClinicalData = async () => {
         if (!patientId) return;
         setConsultationsLoading(true);
+        setAntenatalLoading(true);
         setAppointmentsLoading(true);
         setVitalsLoading(true);
-        const [consultationResult, appointmentResult, vitalResult] = await Promise.allSettled([
+        const [consultationResult, appointmentResult, vitalResult, antenatalResult] = await Promise.allSettled([
           getConsultations({ patientId }),
           getAllAppointments({ patientId }),
           getVitalsByPatient(patientId),
+          getAnteNatalRecordByPatientId(patientId),
         ]);
 
         if (!mounted) return;
@@ -122,6 +128,11 @@ const PatientDetails = () => {
           setLatestVital(getLatestVital(vitals));
         } else setLatestVital(null);
         setVitalsLoading(false);
+
+        if (antenatalResult.status === 'fulfilled') {
+          setAntenatalRecords(unwrapAnteNatalRecords(antenatalResult.value, { isViewingDependant, dependantId }));
+        } else setAntenatalRecords([]);
+        setAntenatalLoading(false);
       };
       loadClinicalData();
       return () => { mounted = false; };
@@ -422,6 +433,47 @@ const PatientDetails = () => {
             </section>
 
             <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-base-content">Antenatal</h2>
+              {antenatalLoading ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
+                </div>
+              ) : antenatalRecords.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">No antenatal records found.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {antenatalRecords.map((rec, idx) => {
+                    const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy;
+                    return (
+                      <button
+                        key={rec.id || rec._id || idx}
+                        type="button"
+                        onClick={() => setSelectedAntenatal(rec)}
+                        className="rounded-lg border border-base-300 bg-base-100 p-4 text-left transition-colors hover:border-accent/50 hover:bg-base-200/60"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="badge badge-accent badge-sm">Antenatal</span>
+                          <span className="text-xs text-base-content/40">{rec.createdAt ? formatNigeriaDate(rec.createdAt) : '—'}</span>
+                        </div>
+                        <p className="line-clamp-1 text-sm font-medium">
+                          {present?.EDD ? `EDD: ${formatNigeriaDate(present.EDD)}` : `Antenatal Record #${antenatalRecords.length - idx}`}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {present?.durationOfPregnancyInWeek != null && (
+                            <span className="badge badge-ghost badge-xs">{present.durationOfPregnancyInWeek} wks</span>
+                          )}
+                          {(rec.createdByName || rec.doctorName || rec.nurseName) && (
+                            <span className="badge badge-outline badge-xs">{rec.createdByName || rec.doctorName || rec.nurseName}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3">
               <h2 className="text-lg font-semibold text-base-content">Appointments</h2>
               {appointmentsLoading ? (
                 <div className="flex justify-center py-6"><KolakLoader size="sm" /></div>
@@ -615,6 +667,15 @@ const PatientDetails = () => {
         <ConsultationDetailModal
           consultation={selectedConsultation}
           onClose={() => setSelectedConsultation(null)}
+        />
+      )}
+
+      {selectedAntenatal && (
+        <AntenatalDetailModal
+          antenatalRecord={selectedAntenatal}
+          patientId={patientId}
+          patient={patient}
+          onClose={() => setSelectedAntenatal(null)}
         />
       )}
 

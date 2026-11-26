@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 import apiClient from '@/services/api/apiClient';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { getConsultations } from '@/services/api/consultationAPI';
+import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/services/api/anteNatalAPI';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import PatientHmoHistory from './PatientHmoHistory';
@@ -38,7 +39,8 @@ import {
 } from '@/services/api/vitalsAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
-import { AppointmentDetailsModal, ConsultationDetailModal } from '@/components/modals';
+import { AppointmentDetailsModal, ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals';
+import PendingUnbilledItemsCard from '@/components/cashier/PendingUnbilledItemsCard';
 
 
 // Detect injection-route medications defensively across possible field names,
@@ -96,6 +98,9 @@ const IncomingHmoDetails = () => {
   const [itemDecisions, setItemDecisions] = useState({});
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(true);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(true);
+  const [selectedAntenatal, setSelectedAntenatal] = useState(null);
   const [latestVital, setLatestVital] = useState(null);
   const [vitalsLoading, setVitalsLoading] = useState(true);
   const [latestLab, setLatestLab] = useState(null);
@@ -135,6 +140,49 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     () => Object.values(savedItems).some(Boolean),
     [savedItems],
   );
+
+  const refreshBillings = async () => {
+    if (!patientId) return;
+    try {
+      const res = await getAllBillings({ patientId });
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : [];
+      const relevantBills = list.filter((bill) =>
+        isViewingDependant ? bill.dependantId === dependantId : !bill.dependantId
+      );
+      setRawBillings(relevantBills);
+
+      const pendingBillings = relevantBills
+        .map((bill) => {
+          const pendingItemsWithIndex = (bill.itemDetails || [])
+            .map((item, idx) => ({ ...item, originalIdx: idx }))
+            .filter((item) => !item.hmoStatus || item.hmoStatus === 'pending');
+          return { ...bill, itemDetails: pendingItemsWithIndex };
+        })
+        .filter((bill) => bill.itemDetails.length > 0);
+
+      const initial = {};
+      pendingBillings.forEach((bill) => {
+        initial[bill.id] = {};
+        (bill.itemDetails || []).forEach((item) => {
+          initial[bill.id][item.originalIdx] = {
+            status: item.hmoStatus || 'pending',
+            hmoCovered: Number(item.hmoCovered || 0),
+            isClaimed: !!item.isClaimed,
+            hmoApprovedBy:
+              item.hmoApprovedBy ||
+              (item.hmoStatus && item.hmoStatus !== 'pending' ? bill.hmoApprovedBy : '') ||
+              '',
+          };
+        });
+      });
+      setItemDecisions(initial);
+      setBillings(pendingBillings);
+      setHistoryRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error('Failed to refresh billings for HMO:', err);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -206,6 +254,7 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                 status: item.hmoStatus || 'pending',
                 hmoCovered: Number(item.hmoCovered || 0),
                 isClaimed: !!item.isClaimed,
+                hmoApprovedBy: item.hmoApprovedBy || (item.hmoStatus && item.hmoStatus !== 'pending' ? bill.hmoApprovedBy : '') || '',
               };
             });
           });
@@ -349,6 +398,26 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    const fetchAntenatal = async () => {
+      try {
+        setAntenatalLoading(true);
+        const res = await getAnteNatalRecordByPatientId(patientId);
+        const scoped = unwrapAnteNatalRecords(res, { isViewingDependant, dependantId });
+        if (mounted) setAntenatalRecords(scoped);
+      } catch {
+        if (mounted) setAntenatalRecords([]);
+      } finally {
+        if (mounted) setAntenatalLoading(false);
+      }
+    };
+    if (patientId) fetchAntenatal();
+    return () => {
+      mounted = false;
+    };
+  }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
+    let mounted = true;
     const fetchPrescriptions = async () => {
       if (!consultations.length) {
         if (mounted) setPrescriptionsByConsultation({});
@@ -437,6 +506,7 @@ useEffect(() => {
           status,
           hmoCovered: numericCovered,
           isClaimed: isClaimed !== undefined ? isClaimed : (prev[billingId]?.[itemIdx]?.isClaimed || false),
+          hmoApprovedBy: status === 'pending' ? '' : (hmoUserName || prev[billingId]?.[itemIdx]?.hmoApprovedBy || ''),
         },
       };
       const next = { ...prev, [billingId]: updatedBillDecisions };
@@ -469,6 +539,7 @@ useEffect(() => {
               hmoCovered: covered,
               patientOwes: patientPays,
               isClaimed: isClaimed !== undefined ? isClaimed : (item.isClaimed || false),
+              hmoApprovedBy: status === 'pending' ? '' : (hmoUserName || item.hmoApprovedBy || ''),
             };
           }
 
@@ -987,7 +1058,14 @@ useEffect(() => {
                 ]}
               />
          </div>
-           
+
+            <PendingUnbilledItemsCard
+              mode="hmo"
+              patientId={patientId}
+              dependantId={dependantId}
+              billings={rawBillings}
+              onBillGenerated={refreshBillings}
+            />
 
             {/* Bulk actions */}
             {!loading && billings.length > 0 && (
@@ -1065,11 +1143,7 @@ useEffect(() => {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold">
-                          ₦{Number(bill.totalAmount || 0).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-base-content/50">Total</p>
-                        <p className="text-xs text-base-content/40 mt-1">
+                        <p className="text-xs text-base-content/50">
                           {bill.createdAt
                             ? formatNigeriaDate(bill.createdAt)
                             : '—'}
@@ -1083,9 +1157,7 @@ useEffect(() => {
                           <tr className="border-b border-base-200">
                             <th>Description</th>
                             <th>Code</th>
-                            <th className="text-right">Price</th>
                             <th className="text-right">Qty</th>
-                            <th className="text-right">Total</th>
                             <th className="text-center w-28">
                               <div className="flex items-center justify-center gap-1.5">
                                 <input
@@ -1099,7 +1171,8 @@ useEffect(() => {
                                 <span>Claimed</span>
                               </div>
                             </th>
-                            <th className="text-center w-48">HMO Decision</th>
+                            <th>Reviewed By</th>
+                            <th className="text-center w-44">HMO Decision</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1108,6 +1181,36 @@ useEffect(() => {
                             const decisionStatus =
                               itemDecisions[bill.id]?.[idx]?.status ||
                               'pending';
+                            const reviewerName =
+                              itemDecisions[bill.id]?.[idx]?.hmoApprovedBy ||
+                              item.hmoApprovedBy ||
+                              (decisionStatus !== 'pending' ? bill.hmoApprovedBy : '') ||
+                              '';
+                            let regimenText = item.regimenSummary || '';
+                            if (!regimenText && String(item.code || '').toUpperCase() === 'PRESCRIPTION') {
+                              const allRx = Object.values(prescriptionsByConsultation || {}).flat();
+                              const descLower = String(item.description || '').toLowerCase();
+                              const matchedRx = allRx.find((rx) =>
+                                item.prescriptionId
+                                  ? String(rx._id || rx.id) === String(item.prescriptionId)
+                                  : (rx.medications || []).some((m) =>
+                                      m.drugName && descLower.includes(String(m.drugName).toLowerCase())
+                                    )
+                              );
+                              const matchedMed =
+                                (matchedRx?.medications || []).find((m) =>
+                                  m.drugName && descLower.includes(String(m.drugName).toLowerCase())
+                                ) || matchedRx?.medications?.[0];
+                              if (matchedMed) {
+                                regimenText = [
+                                  matchedMed.dosage || (matchedMed.dosageAmount ? `${matchedMed.dosageAmount}${matchedMed.dosageUnit ? ` ${matchedMed.dosageUnit}` : ''}` : ''),
+                                  matchedMed.frequency,
+                                  matchedMed.duration,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' • ');
+                              }
+                            }
                             return (
                               <tr
                                 key={idx}
@@ -1123,34 +1226,29 @@ useEffect(() => {
                                   <p className="font-medium">
                                     {item.description}
                                   </p>
+                                  {regimenText && (
+                                    <p className="text-xs text-base-content/60 mt-0.5">
+                                      {regimenText}
+                                    </p>
+                                  )}
                                   {(() => {
                                     const d = itemDecisions[bill.id]?.[idx];
                                     if (d?.status === 'approved')
                                       return (
                                         <span className="text-xs text-success">
-                                          HMO Covers Full ₦
-                                          {Number(item.total).toLocaleString()}
+                                          ✓ HMO Approved
                                         </span>
                                       );
                                     if (d?.status === 'rejected')
                                       return (
                                         <span className="text-xs text-error">
-                                          Patient Self-Pay ₦
-                                          {Number(item.total).toLocaleString()}
+                                          ✕ Rejected (Patient Self-Pay at Cashier)
                                         </span>
                                       );
                                     if (d?.status === 'partial')
                                       return (
                                         <span className="text-xs text-warning">
-                                          Partial — HMO: ₦
-                                          {Number(
-                                            d.hmoCovered || 0,
-                                          ).toLocaleString()}{' '}
-                                          · Patient: ₦
-                                          {(
-                                            Number(item.total) -
-                                            Number(d.hmoCovered || 0)
-                                          ).toLocaleString()}
+                                          Partial HMO Coverage
                                         </span>
                                       );
                                     return null;
@@ -1159,13 +1257,7 @@ useEffect(() => {
                                 <td className="text-xs text-base-content/60">
                                   {item.code}
                                 </td>
-                                <td className="text-right">
-                                  ₦{Number(item.price || 0).toLocaleString()}
-                                </td>
                                 <td className="text-right">{item.quantity}</td>
-                                <td className="text-right font-medium">
-                                  ₦{Number(item.total || 0).toLocaleString()}
-                                </td>
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -1175,6 +1267,9 @@ useEffect(() => {
                                     disabled={submitting || isAnySaving}
                                     title="Toggle Claimed status"
                                   />
+                                </td>
+                                <td className="text-xs text-base-content/70">
+                                  {reviewerName || '—'}
                                 </td>
                                 <td className="text-center">
                                   <div className="flex flex-col items-center gap-1.5">
@@ -1200,34 +1295,7 @@ useEffect(() => {
                                         itemDecisions[bill.id]?.[idx]?.status === 'approved' ? (
                                           <span className="loading loading-spinner loading-xs" />
                                         ) : (
-                                          '✓ Full'
-                                        )}
-                                      </button>
-                                      <button
-                                        className={`btn btn-xs ${
-                                          itemDecisions[bill.id]?.[idx]
-                                            ?.status === 'partial'
-                                            ? 'btn-warning'
-                                            : 'btn-outline btn-warning'
-                                        }`}
-                                        onClick={() => {
-                                          const nextStatus =
-                                            itemDecisions[bill.id]?.[idx]?.status === 'partial'
-                                              ? 'pending'
-                                              : 'partial';
-                                          const covered =
-                                            nextStatus === 'partial'
-                                              ? Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0)
-                                              : 0;
-                                          saveItemDecision(bill.id, idx, nextStatus, covered);
-                                        }}
-                                        disabled={savingItems[`${bill.id}-${idx}`] || submitting}
-                                      >
-                                        {savingItems[`${bill.id}-${idx}`] &&
-                                        itemDecisions[bill.id]?.[idx]?.status === 'partial' ? (
-                                          <span className="loading loading-spinner loading-xs" />
-                                        ) : (
-                                          '½ Partial'
+                                          '✓ Approve'
                                         )}
                                       </button>
                                       <button
@@ -1250,7 +1318,7 @@ useEffect(() => {
                                         itemDecisions[bill.id]?.[idx]?.status === 'rejected' ? (
                                           <span className="loading loading-spinner loading-xs" />
                                         ) : (
-                                          '✕ None'
+                                          '✕ Reject'
                                         )}
                                       </button>
                                     </div>
@@ -1266,75 +1334,6 @@ useEffect(() => {
                                         ✓ Saved
                                       </span>
                                     ) : null}
-
-                                    {itemDecisions[bill.id]?.[idx]?.status ===
-                                      'partial' && (
-                                      <div className="flex items-center gap-1 mt-1">
-                                        <span className="text-xs text-base-content/60">
-                                          ₦
-                                        </span>
-                                        <input
-                                          type="number"
-                                          className="input input-bordered input-xs w-24 text-right"
-                                          placeholder="HMO amount"
-                                          min={0}
-                                          max={Number(item.total || 0)}
-                                          value={
-                                            itemDecisions[bill.id]?.[idx]
-                                              ?.hmoCovered ?? ''
-                                          }
-                                          onChange={(e) =>
-                                            handlePartialAmountChange(
-                                              bill.id,
-                                              idx,
-                                              item.total,
-                                              e.target.value,
-                                            )
-                                          }
-                                          onBlur={(e) =>
-                                            handlePartialBlur(
-                                              bill.id,
-                                              idx,
-                                              item.total,
-                                              e.target.value,
-                                            )
-                                          }
-                                          disabled={submitting}
-                                        />
-                                        <span className="text-xs text-base-content/40">
-                                          / ₦
-                                          {Number(
-                                            item.total || 0,
-                                          ).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {itemDecisions[bill.id]?.[idx]?.status ===
-                                      'partial' && (
-                                      <div className="text-xs mt-0.5">
-                                        <span className="text-success">
-                                          HMO: ₦
-                                          {Number(
-                                            itemDecisions[bill.id]?.[idx]
-                                              ?.hmoCovered || 0,
-                                          ).toLocaleString()}
-                                        </span>
-                                        <span className="text-base-content/40 mx-1">
-                                          ·
-                                        </span>
-                                        <span className="text-error">
-                                          Patient: ₦
-                                          {(
-                                            Number(item.total || 0) -
-                                            Number(
-                                              itemDecisions[bill.id]?.[idx]
-                                                ?.hmoCovered || 0,
-                                            )
-                                          ).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1354,35 +1353,27 @@ useEffect(() => {
                 <div className="card-body p-5">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm text-base-content/60">
-                        Total Pending Bill:{' '}
-                        <span className="font-medium text-base-content">
-                          ₦
-                          {billings
-                            .reduce((sum, b) => {
-                              const bTotal = (b.itemDetails || []).reduce(
-                                (itemSum, i) =>
-                                  itemSum + Number(i.total || 0),
-                                0
-                              );
-                              return sum + bTotal;
-                            }, 0)
-                            .toLocaleString()}
-                        </span>
-                      </p>
-
-                      {approvedTotal > 0 && (
-                        <p className="text-sm text-success font-medium">
-                          ✓ HMO Covers: ₦{approvedTotal.toLocaleString()}
-                        </p>
-                      )}
-
-                      {/* ✅ fixed: uses patientPaysTotal (rejected + partial patient share), was comparing object to string before */}
-                      {patientPaysTotal > 0 && (
-                        <p className="text-sm text-error font-medium">
-                          ✕ Patient Pays: ₦{patientPaysTotal.toLocaleString()}
-                        </p>
-                      )}
+                      {(() => {
+                        const counts = billings.reduce(
+                          (acc, b) => {
+                            (b.itemDetails || []).forEach((it) => {
+                              const st = itemDecisions[b.id]?.[it.originalIdx]?.status || 'pending';
+                              acc[st] = (acc[st] || 0) + 1;
+                            });
+                            return acc;
+                          },
+                          { approved: 0, rejected: 0, pending: 0 }
+                        );
+                        return (
+                          <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+                            <span className="text-success">✓ Approved: {counts.approved}</span>
+                            <span className="text-error">✕ Rejected: {counts.rejected}</span>
+                            {counts.pending > 0 && (
+                              <span className="text-warning">⏳ Pending: {counts.pending}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {(() => {
                         const hasPending = billings.some((bill) =>
@@ -1496,6 +1487,59 @@ useEffect(() => {
         </div>
         </div>
 
+        {/* Antenatal */}
+        <div className="mt-6 p-4 card bg-base-100 border border-base-200">
+          <h3 className="text-lg font-semibold mb-3">Antenatal</h3>
+          {antenatalLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="loading loading-spinner loading-md" />
+            </div>
+          ) : antenatalRecords.length === 0 ? (
+            <div className="py-6 text-center text-sm text-base-content/50">
+              No antenatal records found for this patient.
+            </div>
+          ) : (
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {antenatalRecords.map((rec, idx) => {
+                const isDep = !!rec.dependantId;
+                const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy;
+                return (
+                  <button
+                    key={rec.id || rec._id || idx}
+                    type="button"
+                    onClick={() => setSelectedAntenatal(rec)}
+                    className={`text-left p-4 rounded-lg border transition-colors hover:border-accent/50 hover:bg-base-200/60 ${
+                      isDep ? 'border-secondary/30 bg-secondary/5' : 'border-base-300 bg-base-200/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className={`badge badge-sm shrink-0 ${isDep ? 'badge-secondary' : 'badge-accent'}`}>
+                        {isDep ? rec.dependant?.relationshipType || 'Dependant' : 'Antenatal'}
+                      </span>
+                      <span className="text-xs text-base-content/40 shrink-0">
+                        {rec.createdAt ? formatNigeriaDate(rec.createdAt) : '—'}
+                      </span>
+                    </div>
+                    <div className="mb-1">
+                      <span className="text-sm font-medium text-base-content line-clamp-1">
+                        {present?.EDD ? `EDD: ${formatNigeriaDate(present.EDD)}` : `Antenatal Record #${antenatalRecords.length - idx}`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {present?.durationOfPregnancyInWeek != null && (
+                        <span className="badge badge-ghost badge-xs">{present.durationOfPregnancyInWeek} wks</span>
+                      )}
+                      {(rec.createdByName || rec.doctorName || rec.nurseName) && (
+                        <span className="badge badge-outline badge-xs">{rec.createdByName || rec.doctorName || rec.nurseName}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Appointments */}
 <div className="mt-6 p-4 card bg-base-100 border border-base-200">
   <h3 className="text-lg font-semibold mb-3">Appointments</h3>
@@ -1563,6 +1607,15 @@ useEffect(() => {
           <ConsultationDetailModal
             consultation={selectedConsultation}
             onClose={() => setSelectedConsultation(null)}
+          />
+        )}
+
+        {selectedAntenatal && (
+          <AntenatalDetailModal
+            antenatalRecord={selectedAntenatal}
+            patientId={patientId}
+            patient={patient}
+            onClose={() => setSelectedAntenatal(null)}
           />
         )}
 

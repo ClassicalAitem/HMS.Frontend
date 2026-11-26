@@ -27,6 +27,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import { AppointmentDetailsModal } from '@/components/modals';
 import { getConsultations } from '@/services/api/consultationAPI';
+import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/services/api/anteNatalAPI';
 import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import {
@@ -39,7 +40,7 @@ import { getDiscountDisplay } from '@/utils/discountUtils';
 import { getDependantById, deleteDependant } from '@/services/api/dependantAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
-import { ConsultationDetailModal } from '@/components/modals';
+import { ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals';
 import AdjustDiscountModal from '@/components/modals/AdjustDiscountModal';
 import { getAllBillings } from '@/services/api/billingAPI';
 import { FaBed, FaFileInvoiceDollar, FaTag } from 'react-icons/fa';
@@ -70,6 +71,9 @@ const PatientDetails = () => {
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(true);
   const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(true);
+  const [selectedAntenatal, setSelectedAntenatal] = useState(null);
   const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
@@ -127,14 +131,16 @@ const PatientDetails = () => {
     const loadClinicalData = async () => {
       if (!patientId) return;
       setConsultationsLoading(true);
+      setAntenatalLoading(true);
       setAppointmentsLoading(true);
       setVitalsLoading(true);
       setAdmissionsLoading(true);
-      const [consultationResult, appointmentResult, vitalResult, admissionResult] = await Promise.allSettled([
+      const [consultationResult, appointmentResult, vitalResult, admissionResult, antenatalResult] = await Promise.allSettled([
         getConsultations({ patientId }),
         getAllAppointments({ patientId }),
         getVitalsByPatient(patientId),
         getAdmissionByPatientId(patientId, { ...(dependantId ? { dependantId } : {}) }),
+        getAnteNatalRecordByPatientId(patientId),
       ]);
 
       if (!mounted) return;
@@ -167,6 +173,11 @@ const PatientDetails = () => {
         setAdmissions([...scoped].sort((a, b) => new Date(b.admittedAt || b.createdAt || 0) - new Date(a.admittedAt || a.createdAt || 0)));
       } else setAdmissions([]);
       setAdmissionsLoading(false);
+
+      if (antenatalResult.status === 'fulfilled') {
+        setAntenatalRecords(unwrapAnteNatalRecords(antenatalResult.value, { isViewingDependant, dependantId }));
+      } else setAntenatalRecords([]);
+      setAntenatalLoading(false);
     };
     loadClinicalData();
     return () => { mounted = false; };
@@ -507,7 +518,73 @@ const PatientDetails = () => {
                               )}
                             </div>
                           </details>
-              
+
+                          <details className="group rounded-lg border border-base-300 bg-base-100">
+                            <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
+                              <span>Antenatal ({antenatalRecords.length})</span>
+                              <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
+                            </summary>
+                            <div className="border-t border-base-200 p-4">
+                              {antenatalLoading ? (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                  {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
+                                </div>
+                              ) : antenatalRecords.length === 0 ? (
+                                <div className="py-6 text-center text-sm text-base-content/50">No antenatal records found.</div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {antenatalRecords.map((rec, idx) => {
+                                    const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy;
+                                    const staffName = rec.createdByName || rec.doctorName || rec.nurseName || '';
+                                    return (
+                                      <article
+                                        key={rec.id || rec._id || idx}
+                                        className="rounded-xl border border-base-300 bg-base-100 p-4 transition-all hover:border-accent/50 hover:bg-base-200/40 cursor-pointer shadow-sm"
+                                        onClick={() => setSelectedAntenatal(rec)}
+                                      >
+                                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2">
+                                            <span className="badge badge-accent badge-sm font-medium">Antenatal</span>
+                                            {staffName && (
+                                              <span className="text-xs font-medium text-base-content/80">
+                                                {staffName}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs text-base-content/50">
+                                              {rec.createdAt ? formatNigeriaDateTime(rec.createdAt) : '—'}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              className="btn btn-xs btn-accent btn-outline"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedAntenatal(rec);
+                                              }}
+                                            >
+                                              View Details
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                                          <div>
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">EDD</span>
+                                            <p className="font-medium text-base-content mt-0.5">{present?.EDD ? formatNigeriaDate(present.EDD) : '—'}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Gestational Age</span>
+                                            <p className="font-semibold text-accent mt-0.5">{present?.durationOfPregnancyInWeek != null ? `${present.durationOfPregnancyInWeek} weeks` : '—'}</p>
+                                          </div>
+                                        </div>
+                                      </article>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </details>
+
                           <details className="group rounded-lg border border-base-300 bg-base-100">
                             <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
                               <span>Appointments ({appointments.length})</span>
@@ -997,6 +1074,15 @@ const PatientDetails = () => {
         <ConsultationDetailModal
           consultation={selectedConsultation}
           onClose={() => setSelectedConsultation(null)}
+        />
+      )}
+
+      {selectedAntenatal && (
+        <AntenatalDetailModal
+          antenatalRecord={selectedAntenatal}
+          patientId={patientId}
+          patient={patient}
+          onClose={() => setSelectedAntenatal(null)}
         />
       )}
 

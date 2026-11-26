@@ -26,6 +26,7 @@ export { default as CreateBillModal } from './CreateBillModal';
 export { default as DoctorBillModal } from './DoctorBillModal';
 export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';
 export { default as ConsultationDetailModal } from './ConsultationDetailModal';
+export { default as AntenatalDetailModal } from './AntenatalDetailModal';
 export { default as PrescribeDrugsModal } from './PrescribeDrugsModal';
 export { default as NurseReportModal } from './NurseReportModal';
 export { default as DischargePatientModal } from './DischargePatientModal';

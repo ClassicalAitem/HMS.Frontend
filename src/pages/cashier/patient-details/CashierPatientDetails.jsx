@@ -13,7 +13,10 @@ import { getDependantById } from '@/services/api/dependantAPI';
 import { getSurgeryByPatientId } from '@/services/api/surgeryAPI';
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
-import { ReceiptModal, AdjustDiscountModal } from '@/components/modals';
+import { getConsultations } from '@/services/api/consultationAPI';
+import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/services/api/anteNatalAPI';
+import { ReceiptModal, AdjustDiscountModal, ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals';
+import PendingUnbilledItemsCard from '@/components/cashier/PendingUnbilledItemsCard';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
@@ -29,11 +32,9 @@ const CashierPatientDetails = () => {
   const { currentPatient, isLoading, error } = useAppSelector((state) => state.patients);
   const { user } = useAppSelector((state) => state.auth);
   const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
-  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin'].includes(userRole);
   const discountApproverLabel = ['super-admin', 'superadmin'].includes(userRole)
     ? 'Super Admin'
-    : userRole === 'admin'
-    ? 'Admin'
     : 'Medical Director';
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [openRow, setOpenRow] = useState(null);
@@ -53,6 +54,12 @@ const CashierPatientDetails = () => {
   const [surgeryAdmissions, setSurgeryAdmissions] = useState([]);
   const [surgeriesLoading, setSurgeriesLoading] = useState(false);
   const [openSurgeryRow, setOpenSurgeryRow] = useState(null);
+  const [consultations, setConsultations] = useState([]);
+  const [consultationsLoading, setConsultationsLoading] = useState(false);
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(false);
+  const [selectedAntenatal, setSelectedAntenatal] = useState(null);
   const { refreshQueueCount } = useNotifications();
 
   const toggleRow = (id) => {
@@ -163,21 +170,22 @@ const CashierPatientDetails = () => {
     }
   }, [error, dispatch, snapshot, currentPatient]);
 
-  useEffect(() => {
-    const fetchBillings = async () => {
-      try {
-        setIsReceiptModalOpen(false);
-        const res = await getAllBillings({ patientId });
-        const billingsData = res?.data?.data || res?.data || [];
-        const list = Array.isArray(billingsData) ? billingsData : [];
-        setBillings(filterSubjectRecords(list));
-      } catch (error) {
-        console.error('Error fetching billings:', error);
-        setBillings([]);
-      }
+  const fetchBillings = React.useCallback(async () => {
+    try {
+      setIsReceiptModalOpen(false);
+      const res = await getAllBillings({ patientId });
+      const billingsData = res?.data?.data || res?.data || [];
+      const list = Array.isArray(billingsData) ? billingsData : [];
+      setBillings(filterSubjectRecords(list));
+    } catch (error) {
+      console.error('Error fetching billings:', error);
+      setBillings([]);
     }
+  }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
     fetchBillings();
-  }, [patientId, isViewingDependant, dependantId])
+  }, [fetchBillings])
 
   useEffect(() => {
     const fetchReceipts = async () => {
@@ -257,6 +265,50 @@ const CashierPatientDetails = () => {
     };
 
     fetchSurgeriesAndCoveredItems();
+    return () => { active = false; };
+  }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchConsultations = async () => {
+      if (!patientId) return;
+      try {
+        setConsultationsLoading(true);
+        const res = await getConsultations({ patientId });
+        const raw = res?.data?.data ?? res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.consultations ?? []);
+        const scoped = filterSubjectRecords(list).sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        if (active) setConsultations(scoped);
+      } catch (err) {
+        console.error('Error fetching consultations for cashier:', err);
+        if (active) setConsultations([]);
+      } finally {
+        if (active) setConsultationsLoading(false);
+      }
+    };
+    fetchConsultations();
+    return () => { active = false; };
+  }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchAntenatal = async () => {
+      if (!patientId) return;
+      try {
+        setAntenatalLoading(true);
+        const res = await getAnteNatalRecordByPatientId(patientId);
+        const scoped = unwrapAnteNatalRecords(res, { isViewingDependant, dependantId });
+        if (active) setAntenatalRecords(scoped);
+      } catch (err) {
+        console.error('Error fetching antenatal records for cashier:', err);
+        if (active) setAntenatalRecords([]);
+      } finally {
+        if (active) setAntenatalLoading(false);
+      }
+    };
+    fetchAntenatal();
     return () => { active = false; };
   }, [patientId, isViewingDependant, dependantId]);
 
@@ -570,6 +622,13 @@ const CashierPatientDetails = () => {
               />
             
 
+        <PendingUnbilledItemsCard
+          patientId={patientId}
+          dependantId={dependantId}
+          billings={billings}
+          onBillGenerated={fetchBillings}
+        />
+
         {/* Outstanding Bills */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 min-w-0">
           <h3 className="text-xl font-bold text-primary mb-4">
@@ -727,9 +786,40 @@ const CashierPatientDetails = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {bill.itemDetails?.map((item, index) => (
+                                {bill.itemDetails?.map((item, index) => {
+                                  let regimenText = item.regimenSummary || '';
+                                  if (!regimenText && String(item.code || '').toUpperCase() === 'PRESCRIPTION') {
+                                    const descLower = String(item.description || '').toLowerCase();
+                                    const matchedRx = surgeryPrescriptions.find((rx) =>
+                                      item.prescriptionId
+                                        ? String(rx._id || rx.id) === String(item.prescriptionId)
+                                        : (rx.medications || []).some((m) =>
+                                            m.drugName && descLower.includes(String(m.drugName).toLowerCase())
+                                          )
+                                    );
+                                    const matchedMed = (matchedRx?.medications || []).find((m) =>
+                                      m.drugName && descLower.includes(String(m.drugName).toLowerCase())
+                                    ) || matchedRx?.medications?.[0];
+                                    if (matchedMed) {
+                                      regimenText = [
+                                        matchedMed.dosage || (matchedMed.dosageAmount ? `${matchedMed.dosageAmount}${matchedMed.dosageUnit ? ` ${matchedMed.dosageUnit}` : ''}` : ''),
+                                        matchedMed.frequency,
+                                        matchedMed.duration,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(' • ');
+                                    }
+                                  }
+                                  return (
                                   <tr key={index} className="border-b border-base-300 hover:bg-base-100">
-                                    <td className="px-4 py-3">{item.description}</td>
+                                    <td className="px-4 py-3">
+                                      <div>{item.description}</div>
+                                      {regimenText && (
+                                        <div className="text-xs text-base-content/60 mt-0.5">
+                                          {regimenText}
+                                        </div>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3 text-base-content/70">{item.code}</td>
                                     <td className="px-4 py-3">₦{(Number(item.price) || 0).toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.quantity}</td>
@@ -742,7 +832,8 @@ const CashierPatientDetails = () => {
                                       )}
                                     </td>
                                   </tr>
-                                ))}
+                                  );
+                                })}
                               </tbody>
                             </table>
 
@@ -1212,6 +1303,112 @@ const CashierPatientDetails = () => {
           )}
         </div>
 
+        {/* Consultations */}
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 min-w-0">
+          <h3 className="text-xl font-bold text-primary mb-4">Consultations</h3>
+          {consultationsLoading ? (
+            <div className="flex items-center justify-center py-6 gap-2 text-base-content/60">
+              <span className="loading loading-spinner loading-sm" />
+              <span className="text-sm">Loading consultations...</span>
+            </div>
+          ) : consultations.length === 0 ? (
+            <p className="text-sm text-base-content/50">No consultations recorded.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {consultations.map((c) => {
+                const isDep = !!c.dependantId;
+                const depName = isDep
+                  ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
+                  : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
+                return (
+                  <button
+                    key={c.id || c._id}
+                    type="button"
+                    onClick={() => setSelectedConsultation(c)}
+                    className={`text-left p-4 rounded-lg border transition-colors hover:border-primary/50 hover:bg-base-200/60 ${
+                      isDep ? 'border-secondary/30 bg-secondary/5' : 'border-base-300 bg-base-200/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`badge badge-sm shrink-0 ${isDep ? 'badge-secondary' : 'badge-primary'}`}>
+                          {isDep ? c.dependant?.relationshipType || 'Dependant' : 'Patient'}
+                        </span>
+                        {isDep && (
+                          <span className="text-xs text-base-content/60 truncate">{depName}</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-base-content/40 shrink-0">
+                        {c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}
+                      </span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="text-sm font-medium text-base-content line-clamp-1">
+                        {c.diagnosis || 'Pending diagnosis'}
+                      </span>
+                    </div>
+                    {c.visitReason && (
+                      <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Antenatal Records */}
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 min-w-0">
+          <h3 className="text-xl font-bold text-primary mb-4">Antenatal</h3>
+          {antenatalLoading ? (
+            <div className="flex items-center justify-center py-6 gap-2 text-base-content/60">
+              <span className="loading loading-spinner loading-sm" />
+              <span className="text-sm">Loading antenatal records...</span>
+            </div>
+          ) : antenatalRecords.length === 0 ? (
+            <p className="text-sm text-base-content/50">No antenatal records found.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {antenatalRecords.map((rec, idx) => {
+                const isDep = !!rec.dependantId;
+                const present = rec.presentPregnancyHistories?.[0] || rec.presentPregnancy;
+                return (
+                  <button
+                    key={rec.id || rec._id || idx}
+                    type="button"
+                    onClick={() => setSelectedAntenatal(rec)}
+                    className={`text-left p-4 rounded-lg border transition-colors hover:border-accent/50 hover:bg-base-200/60 ${
+                      isDep ? 'border-secondary/30 bg-secondary/5' : 'border-base-300 bg-base-200/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className={`badge badge-sm shrink-0 ${isDep ? 'badge-secondary' : 'badge-accent'}`}>
+                        {isDep ? rec.dependant?.relationshipType || 'Dependant' : 'Antenatal'}
+                      </span>
+                      <span className="text-xs text-base-content/40 shrink-0">
+                        {rec.createdAt ? formatNigeriaDate(rec.createdAt) : '—'}
+                      </span>
+                    </div>
+                    <div className="mb-1">
+                      <span className="text-sm font-medium text-base-content line-clamp-1">
+                        {present?.EDD ? `EDD: ${formatNigeriaDate(present.EDD)}` : `Antenatal Record #${antenatalRecords.length - idx}`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {present?.durationOfPregnancyInWeek != null && (
+                        <span className="badge badge-ghost badge-xs">{present.durationOfPregnancyInWeek} wks</span>
+                      )}
+                      {(rec.createdByName || rec.doctorName || rec.nurseName) && (
+                        <span className="badge badge-outline badge-xs">{rec.createdByName || rec.doctorName || rec.nurseName}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
 
 
         {/* Receipt Modal */}
@@ -1241,6 +1438,22 @@ const CashierPatientDetails = () => {
             }
           }}
         />
+
+        {selectedConsultation && (
+          <ConsultationDetailModal
+            consultation={selectedConsultation}
+            onClose={() => setSelectedConsultation(null)}
+          />
+        )}
+
+        {selectedAntenatal && (
+          <AntenatalDetailModal
+            antenatalRecord={selectedAntenatal}
+            patientId={patientId}
+            patient={patient}
+            onClose={() => setSelectedAntenatal(null)}
+          />
+        )}
       </div>
     </CashierLayout>
   );
