@@ -333,6 +333,29 @@ export const applyDiscount = async (billingId, { discountAmount, discountReason 
   return response.data;
 };
 
+export const savePendingDiscount = async (patientId, { dependantId, discountType = 'fixed', discountValue, discountReason }) => {
+  const response = await apiClient.post(`/billing/pending-discount/${patientId}`, {
+    ...(dependantId && { dependantId }),
+    discountType,
+    discountValue,
+    discountReason,
+  });
+  return response.data;
+};
+
+export const getPendingDiscount = async (patientId, dependantId = null) => {
+  const response = await apiClient.get(`/billing/pending-discount/${patientId}`, {
+    params: dependantId ? { dependantId } : {},
+    skipErrorToast: true,
+  });
+  return response.data;
+};
+
+export const cancelPendingDiscount = async (id) => {
+  const response = await apiClient.delete(`/billing/pending-discount/${id}`);
+  return response.data;
+};
+
 export default {
   createBill,
   createBilling,
@@ -350,4 +373,7 @@ export default {
   deleteBilling,
   updateBilling,
   applyDiscount,
+  savePendingDiscount,
+  getPendingDiscount,
+  cancelPendingDiscount,
 };

@@ -36,14 +36,18 @@ useEffect(() => {
       const flattened = [];
       scoped.forEach(bill => {
         (bill.itemDetails || []).forEach((item, idx) => {
-          const status = item.hmoStatus || 'pending';
+          const rawStatus = String(item.hmoStatus || bill.hmoStatus || '').toLowerCase();
           const isItemPaid = Boolean(
             item.paymentStatus === 'paid' ||
             item.paymentStatus === 'approved' ||
             bill.isCleared ||
             item.isCleared ||
-            status === 'approved'
+            rawStatus === 'approved'
           );
+          const status =
+            rawStatus && rawStatus !== 'pending'
+              ? rawStatus
+              : (item.isClaimed || isItemPaid ? 'approved' : 'pending');
           const paymentStatus = isItemPaid ? 'paid' : (item.paymentStatus || 'unpaid');
 
           flattened.push({
@@ -51,6 +55,7 @@ useEffect(() => {
             billId: bill.id,
             itemIdx: idx,
             description: item.description,
+            regimenSummary: item.regimenSummary || '',
             code: item.code,
             total: Number(item.total || 0),
             hmoCovered: Number(item.hmoCovered || 0),
@@ -59,8 +64,8 @@ useEffect(() => {
             paymentStatus,
             isPaid: isItemPaid,
             isClaimed: !!item.isClaimed,
-            approvedBy: bill.hmoReviewedBy || `${bill.raisedBy?.firstName || ''} ${bill.raisedBy?.lastName || ''}`.trim() || '—',
-            approvedAt: bill.hmoReviewedAt || bill.updatedAt || null,
+            approvedBy: item.hmoApprovedBy || bill.hmoApprovedBy || bill.hmoReviewedBy || `${bill.raisedBy?.firstName || ''} ${bill.raisedBy?.lastName || ''}`.trim() || '—',
+            approvedAt: item.hmoApprovedAt || bill.hmoReviewedAt || bill.updatedAt || null,
           });
         });
       });
@@ -101,17 +106,17 @@ useEffect(() => {
   };
 
   const toggleClaimed = async (row) => {
-    if (updatingId) return;
+    if (updatingId || row.isClaimed) return;
     const bill = rawBillings.find(b => b.id === row.billId);
     if (!bill) return;
 
     const newItems = [...(bill.itemDetails || [])];
     const targetItem = newItems[row.itemIdx];
-    if (!targetItem) return;
+    if (!targetItem || targetItem.isClaimed) return;
 
     newItems[row.itemIdx] = {
       ...targetItem,
-      isClaimed: !targetItem.isClaimed,
+      isClaimed: true,
     };
 
     setUpdatingId(row.key);
@@ -120,8 +125,8 @@ useEffect(() => {
       
       // Update local state directly so we don't need a full refetch
       setRawBillings(prev => prev.map(b => b.id === bill.id ? { ...b, itemDetails: newItems } : b));
-      setRows(prev => prev.map(r => r.key === row.key ? { ...r, isClaimed: !r.isClaimed } : r));
-      toast.success("Claim status updated");
+      setRows(prev => prev.map(r => r.key === row.key ? { ...r, isClaimed: true } : r));
+      toast.success("Item marked as claimed");
     } catch (err) {
       toast.error("Failed to update claim status");
     } finally {
@@ -131,8 +136,8 @@ useEffect(() => {
 
   const allClaimed = rows.length > 0 && rows.every(r => r.isClaimed);
 
-  const handleClaimAll = async (targetClaimed) => {
-    if (updatingId || rows.length === 0) return;
+  const handleClaimAll = async (targetClaimed = true) => {
+    if (updatingId || rows.length === 0 || !targetClaimed) return;
     setUpdatingId('bulk');
     try {
       const billsToUpdate = [];
@@ -241,14 +246,14 @@ useEffect(() => {
           </p>
           <button
             type="button"
-            className={`btn btn-xs ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'} gap-1 font-medium`}
-            onClick={() => handleClaimAll(!allClaimed)}
-            disabled={!!updatingId || rows.length === 0}
+            className={`btn btn-xs ${allClaimed ? 'btn-success text-white' : 'btn-primary'} gap-1 font-medium`}
+            onClick={() => handleClaimAll(true)}
+            disabled={!!updatingId || rows.length === 0 || allClaimed}
           >
             {updatingId === 'bulk' ? (
               <span className="loading loading-spinner loading-xs" />
             ) : allClaimed ? (
-              '↺ Unclaim All'
+              '✓ All Claimed'
             ) : (
               '✓ Claim All'
             )}
@@ -259,9 +264,6 @@ useEffect(() => {
             <thead>
               <tr className="border-b border-base-200">
                 <th>Item</th>
-                <th className="text-right">Total</th>
-                <th className="text-right">HMO Covered</th>
-                <th className="text-right">Patient Owes</th>
                 <th>Decision</th>
                 <th className="text-center">
                   <div className="flex items-center justify-center gap-1.5">
@@ -269,9 +271,9 @@ useEffect(() => {
                       type="checkbox"
                       className="checkbox checkbox-xs checkbox-primary"
                       checked={allClaimed}
-                      onChange={() => handleClaimAll(!allClaimed)}
-                      disabled={!!updatingId}
-                      title={allClaimed ? "Unclaim all" : "Claim all"}
+                      onChange={() => handleClaimAll(true)}
+                      disabled={!!updatingId || allClaimed}
+                      title={allClaimed ? "All items claimed" : "Claim all"}
                     />
                     <span>Claimed</span>
                   </div>
@@ -287,9 +289,6 @@ useEffect(() => {
                     <p className="text-sm">{row.description}</p>
                     <p className="text-xs text-base-content/50">{row.code}</p>
                   </td>
-                  <td className="text-right text-sm">₦{row.total.toLocaleString()}</td>
-                  <td className="text-right text-sm text-success">₦{row.hmoCovered.toLocaleString()}</td>
-                  <td className="text-right text-sm text-error">₦{row.patientOwes.toLocaleString()}</td>
                   <td>
                     <div className="flex items-center gap-2">
                       <span className={`badge badge-sm ${statusBadgeClass(row.status)} capitalize`}>{row.status}</span>
@@ -308,7 +307,8 @@ useEffect(() => {
                       className="checkbox checkbox-sm checkbox-primary" 
                       checked={row.isClaimed}
                       onChange={() => toggleClaimed(row)}
-                      disabled={updatingId === row.key || updatingId === 'bulk'}
+                      disabled={row.isClaimed || updatingId === row.key || updatingId === 'bulk'}
+                      title={row.isClaimed ? 'Claimed (locked)' : 'Mark as claimed'}
                     />
                   </td>
                   <td className="text-sm">{row.approvedBy}</td>

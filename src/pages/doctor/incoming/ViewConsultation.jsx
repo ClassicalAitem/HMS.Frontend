@@ -422,8 +422,8 @@ const ViewConsultation = () => {
       const targetPatientId = patientId || consultation?.patientId || consultation?.patient?._id || consultation?.patient?.id;
 
       const matchesTarget = (rec) => {
-        if (consultationId && String(rec.consultationId || '') === String(consultationId)) {
-          return true;
+        if (consultationId) {
+          return String(rec.consultationId || '') === String(consultationId);
         }
         if (targetPatientId && String(rec.patientId || '') === String(targetPatientId)) {
           if (dependantId) {
@@ -1587,23 +1587,9 @@ const getInventoryMatch = (medication) => {
                   navigate('/dashboard/doctor');
                 }}
       allowedRoles={[
-        'nurse','cashier','hmo', 'sonographer'
+        'nurse', 'pharmacist', 'cashier', 'hmo', 'sonographer'
       ]}
     />
-    <button
-      type="button"
-      className="btn btn-sm btn-outline btn-primary"
-      onClick={() => openBillModal(setIsBillModalOpen)}
-    >
-      Send to cashier
-    </button>
-    <button
-      type="button"
-      className="btn btn-sm btn-outline btn-secondary"
-      onClick={() => openBillModal(setIsSendToHmoModalOpen)}
-    >
-      Send to HMO
-    </button>
 
     {canEdit && (
       <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none">

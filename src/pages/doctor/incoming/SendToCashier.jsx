@@ -80,35 +80,15 @@ const SendToCashier = () => {
 
   const handleSendToCashier = async () => {
     if (!patientId) return;
-    if (items.length === 0) {
-      toast.error('Add at least one billable item');
-      return;
-    }
     setIsSubmitting(true);
     try {
-      if (!billingCreated) {
-        const itemDetail = items.map((i) => ({
-          code: i.note,
-          description: i.name,
-          quantity: Number(i.qty) || 1,
-          price: Number(i.amount) || 0,
-          total: (Number(i.amount) || 0) * (Number(i.qty) || 1),
-        }));
-        const createPromise = createBilling(patientId, { itemDetail, totalAmount: subtotal });
-        await toast.promise(createPromise, {
-          loading: 'Creating bill...',
-          success: 'Bill created',
-          error: (err) => err?.response?.data?.message || 'Failed to create bill',
-        });
-        setBillingCreated(true);
-      }
       const statusPromise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER });
       await toast.promise(statusPromise, {
-        loading: 'Updating status...',
-        success: 'Patient sent to cashier',
+        loading: 'Sending patient to cashier...',
+        success: 'Patient sent to cashier (cashier will compile selected items into a bill)',
         error: (err) => err?.response?.data?.message || 'Failed to update status',
       });
-      navigate('/cashier/incoming');
+      navigate('/doctor/incoming');
     } catch {
       // toasts handle messages
     } finally {

@@ -12,6 +12,7 @@ import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals'
+import VerifyPrescriptionModal from '@/components/modals/VerifyPrescriptionModal'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
@@ -48,6 +49,10 @@ const IncomingDetails = () => {
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
   const [dispenseModalRows, setDispenseModalRows] = useState(null)
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
+  const [editingPrescription, setEditingPrescription] = useState(null)
+  const [verifyingSaving, setVerifyingSaving] = useState(false)
+  const [sendingToCashier, setSendingToCashier] = useState(false)
+  const [sendingToHmo, setSendingToHmo] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
@@ -485,6 +490,18 @@ const getDispenseInfo = (med) => {
       const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
       const billingStatus = getBillingStatusForMed(p._id, m.drugName)
 
+      const isVerified = !!p.pharmacistId
+      const verifiedBilledQty = isVerified && Number(m.billedQuantity) > 0 ? Number(m.billedQuantity) : (dispenseInfo.billedQty ?? dispenseInfo.quantity)
+      const verifiedUnitPrice = isVerified && m.unitPrice !== undefined && m.unitPrice !== null ? Number(m.unitPrice) : Number(dispenseInfo.unitPrice || m.unitPrice || 0)
+      const isUnavailable = m.availability === 'unavailable'
+      const computedLineTotal = isUnavailable
+        ? 0
+        : isVerified && m.lineTotal !== undefined
+        ? Number(m.lineTotal)
+        : isVerified
+        ? verifiedBilledQty * verifiedUnitPrice
+        : Number(dispenseInfo.lineTotal ?? (verifiedBilledQty * verifiedUnitPrice))
+
       return {
         ...m,
         inventoryItem: dispenseInfo.inv,
@@ -500,12 +517,13 @@ const getDispenseInfo = (med) => {
         dependantId: p.dependantId,
         patientId: p.patientId,
         forName,
-        suggestedQty: dispenseInfo.quantity,
+        suggestedQty: isVerified && Number(m.billedQuantity) > 0 && !dispenseInfo.isSingleUnit ? Number(m.billedQuantity) : dispenseInfo.quantity,
+        billedQty: verifiedBilledQty,
         suggestedUnit: dispenseInfo.unit,
-        prescribedQty: dispenseInfo.prescribedQty,
+        prescribedQty: isVerified && Number(m.billedQuantity) > 0 ? Number(m.billedQuantity) : dispenseInfo.prescribedQty,
         bottlesNeeded: dispenseInfo.bottlesNeeded,
-        unitPrice: Number(dispenseInfo.unitPrice || m.unitPrice || 0),
-        lineTotal: Number(dispenseInfo.lineTotal || m.lineTotal || (Number(dispenseInfo.prescribedQty || 1) * Number(dispenseInfo.unitPrice || 0))),
+        unitPrice: isUnavailable ? 0 : verifiedUnitPrice,
+        lineTotal: computedLineTotal,
         isSingleUnit: dispenseInfo.isSingleUnit,
         availabilityInfo,
         hmoStatus: billingStatus.hmoStatus,
@@ -560,6 +578,76 @@ const getDispenseInfo = (med) => {
   const handlePrescriptionAction = (p) => {
     setPendingAction({ prescriptionIds: [p._id] })
     setDispenseModalRows(buildDispenseRowsForPrescriptions([p]))
+  }
+
+  const handleSaveVerification = async (updatedMeds) => {
+    if (!editingPrescription) return
+    setVerifyingSaving(true)
+    try {
+      const res = await updatePrescription(editingPrescription._id, {
+        medications: updatedMeds,
+        pharmacistId,
+        pharmacistName,
+      })
+      const saved = res?.data ?? res
+      setPrescriptions((prev) => ({
+        ...prev,
+        active: prev.active.map((item) =>
+          item._id === editingPrescription._id
+            ? { ...item, ...(saved && saved.medications ? saved : {}), medications: updatedMeds, pharmacistId, pharmacistName }
+            : item
+        ),
+      }))
+      toast.success('Prescription verified and updated')
+      setEditingPrescription(null)
+    } catch (err) {
+      console.error('Failed to save prescription verification:', err)
+      toast.error(getErrorMessage(err, 'Failed to update prescription'))
+    } finally {
+      setVerifyingSaving(false)
+    }
+  }
+
+  const handleSendToCashier = async () => {
+    const pid = patient?.id || patient?._id || patientId
+    if (!pid) return
+    setSendingToCashier(true)
+    try {
+      if (isViewingDependant && incomingDependantId) {
+        await updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_CASHIER })
+      } else {
+        await updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_CASHIER })
+      }
+      toast.success('Patient sent to cashier for billing')
+      refreshQueueCount()
+      navigate('/dashboard/pharmacist/incoming')
+    } catch (err) {
+      console.error('Failed to send to cashier:', err)
+      toast.error(getErrorMessage(err, 'Failed to send to cashier'))
+    } finally {
+      setSendingToCashier(false)
+    }
+  }
+
+  const handleSendToHmo = async () => {
+    const pid = patient?.id || patient?._id || patientId
+    if (!pid) return
+    setSendingToHmo(true)
+    try {
+      if (isViewingDependant && incomingDependantId) {
+        await updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_HMO })
+      } else {
+        await updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_HMO })
+      }
+      toast.success('Patient sent to HMO for approval')
+      refreshQueueCount()
+      navigate('/dashboard/pharmacist/incoming')
+    } catch (err) {
+      console.error('Failed to send to HMO:', err)
+      toast.error(getErrorMessage(err, 'Failed to send to HMO'))
+    } finally {
+      setSendingToHmo(false)
+    }
   }
 
   const handleCancelPrescription = async (p) => {
@@ -790,7 +878,31 @@ const getDispenseInfo = (med) => {
             </div>
 
             {!isHistory && (
-              <div className="flex flex-col gap-2 sm:flex-row pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-primary btn-sm"
+                  disabled={dispenseSubmitting || verifyingSaving || sendingToCashier || sendingToHmo}
+                  onClick={() => setEditingPrescription(p)}
+                >
+                  Verify & Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm text-white"
+                  disabled={dispenseSubmitting || verifyingSaving || sendingToCashier || sendingToHmo}
+                  onClick={handleSendToCashier}
+                >
+                  {sendingToCashier ? <span className="loading loading-spinner loading-xs" /> : 'Send to Cashier'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm text-white"
+                  disabled={dispenseSubmitting || verifyingSaving || sendingToCashier || sendingToHmo}
+                  onClick={handleSendToHmo}
+                >
+                  {sendingToHmo ? <span className="loading loading-spinner loading-xs" /> : 'Send to HMO'}
+                </button>
                 <button
                   className="btn btn-primary btn-sm"
                   disabled={dispenseSubmitting}
@@ -1063,6 +1175,15 @@ const getDispenseInfo = (med) => {
             onClose={() => setSelectedAntenatal(null)}
           />
         )}
+
+        <VerifyPrescriptionModal
+          isOpen={!!editingPrescription}
+          onClose={() => setEditingPrescription(null)}
+          prescription={editingPrescription}
+          inventory={inventory}
+          onSave={handleSaveVerification}
+          submitting={verifyingSaving}
+        />
       </div>
     </PharmacistLayout>
   )

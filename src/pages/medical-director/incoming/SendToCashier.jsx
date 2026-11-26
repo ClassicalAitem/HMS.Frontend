@@ -5,7 +5,7 @@ import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import toast from "react-hot-toast";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { createBilling } from "@/services/api/billingAPI";
+import { savePendingDiscount } from "@/services/api/billingAPI";
 import { SelectServiceChargeModal } from "@/components/modals";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useAppSelector } from "@/store/hooks";
@@ -83,45 +83,24 @@ const SendToCashier = () => {
 
   const handleSendToCashier = async () => {
     if (!patientId) return;
-    if (items.length === 0) {
-      toast.error('Add at least one billable item');
-      return;
-    }
     setIsSubmitting(true);
     try {
-      if (!billingCreated) {
-        const itemDetail = items.map((i) => ({
-          code: i.note,
-          description: i.name,
-          quantity: Number(i.qty) || 1,
-          price: Number(i.amount) || 0,
-          total: (Number(i.amount) || 0) * (Number(i.qty) || 1),
-        }));
-        if (discountNum > (subtotal + vat)) {
-          toast.error("Discount cannot exceed bill total");
-          setIsSubmitting(false);
-          return;
-        }
-        const createPromise = createBilling(patientId, {
-          itemDetail,
-          totalAmount: subtotal + vat,
-          discountAmount: discountNum,
-          discountReason: discountReason?.trim() || (discountNum > 0 ? 'Medical Director Discount' : undefined),
+      if (discountNum > 0) {
+        await savePendingDiscount(patientId, {
+          discountType: 'fixed',
+          discountValue: discountNum,
+          discountReason: discountReason?.trim() || 'Medical Director Discount',
         });
-        await toast.promise(createPromise, {
-          loading: 'Creating bill...',
-          success: 'Bill created',
-          error: (err) => err?.response?.data?.message || 'Failed to create bill',
-        });
-        setBillingCreated(true);
       }
       const statusPromise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER });
       await toast.promise(statusPromise, {
-        loading: 'Updating status...',
-        success: 'Patient sent to cashier',
+        loading: 'Sending patient to cashier...',
+        success: discountNum > 0
+          ? 'Patient sent to cashier with pre-approved discount'
+          : 'Patient sent to cashier',
         error: (err) => err?.response?.data?.message || 'Failed to update status',
       });
-      navigate('/cashier/incoming');
+      navigate('/medical-director/incoming');
     } catch {
       // toasts handle messages
     } finally {

@@ -467,14 +467,10 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                         Prescribed: <span className="font-medium">{Number.isInteger(Number(preview.prescribedQuantity)) ? preview.prescribedQuantity : Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
                         {preview.bottlesNeeded && (
                           <span className="text-base-content/80 ml-2 font-medium">
-                            (Billed: {preview.bottlesNeeded} {preview.displayUnit || 'bottle'}{preview.bottlesNeeded > 1 ? 's' : ''})
+                            (Dispense: {preview.bottlesNeeded} {preview.displayUnit || 'bottle'}{preview.bottlesNeeded > 1 ? 's' : ''})
                           </span>
                         )}
-                        <span className="text-base-content/60 ml-2">
-                          {preview.isSingleUnit || preview.bottlesNeeded ? `(@ ${currency(preview.unitPrice)} each)` : `(@ ${currency(preview.unitPrice)}/unit)`}
-                        </span>
                       </div>
-                      <div className="font-semibold text-success">{currency(preview.lineTotal)}</div>
                     </div>
                   ) : null}
                 </div>
@@ -489,13 +485,6 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
           >
             <IoMdAdd className="w-5 h-5" /> Add Another Medication
           </button>
-
-          <div className="card bg-base-200/40">
-            <div className="card-body p-4 flex-row items-center justify-between">
-              <span className="font-semibold text-base-content/70">Estimated Total</span>
-              <span className="text-xl font-bold text-primary">{currency(grandTotal)}</span>
-            </div>
-          </div>
 
           <div className="flex justify-end gap-3 pt-2 pb-2">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>

@@ -16,9 +16,7 @@ import {
   FaReceipt
 } from 'react-icons/fa';
 import { RiRefreshLine } from 'react-icons/ri';
-import { getPatients } from '@/services/api/patientsAPI';
-import { getDependants } from '@/services/api/dependantAPI';
-import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import metricsAPI from '@/services/api/metricsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const FrontdeskDashboard = () => {
@@ -34,59 +32,16 @@ const FrontdeskDashboard = () => {
   const fetchDashboardStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const [patientsRes, dependantsRes, appointmentsRes] = await Promise.allSettled([
-        getPatients(),
-        getDependants(),
-        getAllAppointments(),
-      ]);
-
-      const patients = patientsRes.status === 'fulfilled'
-        ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : (patientsRes.value?.data?.data ?? []))
-        : [];
-
-      const rawDependants = dependantsRes.status === 'fulfilled'
-        ? (dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [])
-        : [];
-      const dependants = Array.isArray(rawDependants)
-        ? rawDependants
-        : (rawDependants?.dependants ?? []);
-
-      const totalPatients = patients.length + dependants.length;
-
-      const now = new Date();
-      const isToday = (dateVal) => {
-        if (!dateVal) return false;
-        const d = new Date(dateVal);
-        return (
-          d.getDate() === now.getDate() &&
-          d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear()
-        );
-      };
-
-      const registeredToday =
-        patients.filter((p) => isToday(p.createdAt)).length +
-        dependants.filter((d) => isToday(d.createdAt)).length;
-
-      const attendedToday =
-        patients.filter((p) => isToday(p.updatedAt)).length +
-        dependants.filter((d) => isToday(d.updatedAt)).length;
-
-      const rawAppts = appointmentsRes.status === 'fulfilled'
-        ? (appointmentsRes.value?.data?.data ?? appointmentsRes.value?.data ?? [])
-        : [];
-      const apptsList = Array.isArray(rawAppts) ? rawAppts : [];
-      const upcomingAppointments = apptsList.filter((a) => {
-        const s = String(a.status || '').toLowerCase();
-        return s !== 'cancelled' && s !== 'completed';
-      }).length;
-
-      setMetrics({
-        totalPatients,
-        registeredToday,
-        upcomingAppointments,
-        attendedToday,
-      });
+      const res = await metricsAPI.getOverallMetrics({ type: 'frontdesk' });
+      const data = res?.data || res;
+      if (data) {
+        setMetrics({
+          totalPatients: data.totalPatients || 0,
+          registeredToday: data.registeredToday || 0,
+          attendedToday: data.attendedToday || 0,
+          upcomingAppointments: data.upcomingAppointments || 0,
+        });
+      }
     } catch (err) {
       console.error('Failed to load frontdesk dashboard metrics:', err);
     } finally {

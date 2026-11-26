@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import HrLayout from "@/layouts/hr/HrLayout";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchMetrics } from "@/store/slices/metricsSlice";
-import { getPatients } from "@/services/api/patientsAPI";
-import { getDependants } from "@/services/api/dependantAPI";
+import { getQueueCount } from "@/services/api/notificationAPI";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import {
   FaUsers,
@@ -35,50 +34,25 @@ const HrDashboard = () => {
   const [isQueueLoading, setIsQueueLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const DOCTOR_STATUSES = "awaiting_consultation,awaiting_doctor,in_consultation";
-  const NURSE_STATUSES = "awaiting_vitals,awaiting_injection,awaiting_nurse,awaiting_sampling";
-
   const fetchQueueCounts = useCallback(async () => {
     try {
       setIsQueueLoading(true);
-      const [
-        docPatientsRes,
-        docDependantsRes,
-        nursePatientsRes,
-        nurseDependantsRes,
-      ] = await Promise.allSettled([
-        getPatients({ status: DOCTOR_STATUSES, limit: 100 }),
-        getDependants({ status: DOCTOR_STATUSES, limit: 100 }),
-        getPatients({ status: NURSE_STATUSES, limit: 100 }),
-        getDependants({ status: NURSE_STATUSES, limit: 100 }),
+      const [docRes, nurseRes] = await Promise.allSettled([
+        getQueueCount("doctor"),
+        getQueueCount("nurse"),
       ]);
 
-      const docPatients =
-        docPatientsRes.status === "fulfilled" && Array.isArray(docPatientsRes.value?.data)
-          ? docPatientsRes.value.data
-          : [];
-      const docDeps =
-        docDependantsRes.status === "fulfilled"
-          ? (() => {
-              const d = docDependantsRes.value?.data?.data ?? docDependantsRes.value?.data;
-              return Array.isArray(d) ? d : d?.dependants ?? [];
-            })()
-          : [];
+      const docCount =
+        docRes.status === "fulfilled"
+          ? Number(docRes.value?.data?.count ?? docRes.value?.count ?? 0)
+          : 0;
+      const nurseCount =
+        nurseRes.status === "fulfilled"
+          ? Number(nurseRes.value?.data?.count ?? nurseRes.value?.count ?? 0)
+          : 0;
 
-      const nursePatients =
-        nursePatientsRes.status === "fulfilled" && Array.isArray(nursePatientsRes.value?.data)
-          ? nursePatientsRes.value.data
-          : [];
-      const nurseDeps =
-        nurseDependantsRes.status === "fulfilled"
-          ? (() => {
-              const d = nurseDependantsRes.value?.data?.data ?? nurseDependantsRes.value?.data;
-              return Array.isArray(d) ? d : d?.dependants ?? [];
-            })()
-          : [];
-
-      setDoctorQueueCount(docPatients.length + docDeps.length);
-      setNurseQueueCount(nursePatients.length + nurseDeps.length);
+      setDoctorQueueCount(docCount);
+      setNurseQueueCount(nurseCount);
     } catch (err) {
       console.error("Failed to fetch queue counts:", err);
     } finally {

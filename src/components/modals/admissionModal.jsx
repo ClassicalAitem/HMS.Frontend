@@ -246,16 +246,13 @@ const AdmissionModal = ({
                             className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
                             onClick={() => {
                               setValue(`admissions.${index}.name`, chargeItem.service);
-                              setValue(`admissions.${index}.amount`, chargeItem.amount || 0);
+                              setValue(`admissions.${index}.amount`, 0);
                               setValue(`admissions.${index}.serviceChargeId`, chargeItem.id);
                               setItemDropdownIndex(null);
                               setItemSearch('');
                             }}
                           >
                             <span>{chargeItem.service}</span>
-                            <span className="text-xs text-gray-500">
-                              ₦{Number(chargeItem.amount).toLocaleString()}
-                            </span>
                           </div>
                         ))}
                       </div>
@@ -266,18 +263,6 @@ const AdmissionModal = ({
                         {errors.admissions[index].name.message}
                       </span>
                     )}
-                  </div>
-
-                  <div className="form-control mt-2">
-                    <label className="label">
-                      <span className="label-text text-xs">Amount (₦)</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="input input-bordered input-sm"
-                      {...register(`admissions.${index}.amount`)}
-                    />
                   </div>
                 </div>
               </div>

@@ -17,9 +17,10 @@ import {
 import { RiRefreshLine, RiHandCoinLine } from "react-icons/ri";
 import { MdOutlinePayments } from "react-icons/md";
 import { useAppSelector } from "@/store/hooks";
-import { getAllBillings, getAllReceipts } from "@/services/api/billingAPI";
+import { getAllReceipts } from "@/services/api/billingAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 import { getDependants } from "@/services/api/dependantAPI";
+import metricsAPI from "@/services/api/metricsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { normalizeStatus } from "@/utils/statusUtils";
 import { formatNigeriaDateTime, formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
@@ -46,7 +47,14 @@ const CashierDashboard = () => {
 
   const [awaitingQueue, setAwaitingQueue] = useState([]);
   const [recentReceipts, setRecentReceipts] = useState([]);
-  const [allBillings, setAllBillings] = useState([]);
+  const [kpiStats, setKpiStats] = useState({
+    todayRevenue: 0,
+    totalRevenue: 0,
+    todayReceiptsCount: 0,
+    totalPendingBillsCount: 0,
+    totalOutstandingAmount: 0,
+    awaitingCashierCount: 0,
+  });
   const [activeTab, setActiveTab] = useState("queue"); // "queue" | "recent_receipts"
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -55,11 +63,11 @@ const CashierDashboard = () => {
     else setLoading(true);
 
     try {
-      const [patientsRes, dependantsRes, receiptsRes, billingsRes] = await Promise.allSettled([
-        getPatients({ status: "awaiting_cashier", limit: 200 }),
-        getDependants({ status: "awaiting_cashier", limit: 200 }),
-        getAllReceipts({ limit: 150, sort: "createdAt:desc" }),
-        getAllBillings({ limit: 150 }),
+      const [patientsRes, dependantsRes, receiptsRes, metricsRes] = await Promise.allSettled([
+        getPatients({ status: "awaiting_cashier", limit: 50 }),
+        getDependants({ status: "awaiting_cashier", limit: 50 }),
+        getAllReceipts({ limit: 20, sort: "createdAt:desc" }),
+        metricsAPI.getOverallMetrics({ type: "cashier" }),
       ]);
 
       // 1. Queue Patients & Dependants
@@ -115,11 +123,19 @@ const CashierDashboard = () => {
         setRecentReceipts(rList);
       }
 
-      // 3. Billings Data
-      if (billingsRes.status === "fulfilled") {
-        const rawBills = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
-        const bList = Array.isArray(rawBills) ? rawBills : [];
-        setAllBillings(bList);
+      // 3. Redis-cached KPI Metrics
+      if (metricsRes.status === "fulfilled") {
+        const mData = metricsRes.value?.data || metricsRes.value;
+        if (mData) {
+          setKpiStats({
+            todayRevenue: Number(mData.todayRevenue) || 0,
+            totalRevenue: Number(mData.totalRevenue) || 0,
+            todayReceiptsCount: Number(mData.todayReceiptsCount) || 0,
+            totalPendingBillsCount: Number(mData.totalPendingBillsCount) || 0,
+            totalOutstandingAmount: Number(mData.totalOutstandingAmount) || 0,
+            awaitingCashierCount: Number(mData.awaitingCashierCount) || 0,
+          });
+        }
       }
     } catch (err) {
       console.error("CashierDashboard: fetch error", err);
@@ -133,43 +149,17 @@ const CashierDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Aggregate KPI metrics
+  // Aggregate KPI metrics from Redis Cloud cache
   const stats = useMemo(() => {
-    let totalRevenue = 0;
-    let todayRevenue = 0;
-    let todayReceiptsCount = 0;
-
-    recentReceipts.forEach((r) => {
-      const amount = Number(r.amountPaid || 0);
-      const isPaid = !r.status || r.status.toLowerCase() === "paid" || r.status.toLowerCase() === "completed";
-      if (isPaid) {
-        totalRevenue += amount;
-        if (isToday(r.paidAt || r.createdAt)) {
-          todayRevenue += amount;
-          todayReceiptsCount += 1;
-        }
-      }
-    });
-
-    let totalPendingBillsCount = 0;
-    let totalOutstandingAmount = 0;
-    allBillings.forEach((b) => {
-      const outstanding = Number(b.outstandingBill || 0);
-      if (outstanding > 0) {
-        totalPendingBillsCount += 1;
-        totalOutstandingAmount += outstanding;
-      }
-    });
-
     return {
-      queueCount: awaitingQueue.length,
-      totalRevenue,
-      todayRevenue,
-      todayReceiptsCount,
-      totalPendingBillsCount,
-      totalOutstandingAmount,
+      queueCount: awaitingQueue.length || kpiStats.awaitingCashierCount || 0,
+      totalRevenue: kpiStats.totalRevenue,
+      todayRevenue: kpiStats.todayRevenue,
+      todayReceiptsCount: kpiStats.todayReceiptsCount,
+      totalPendingBillsCount: kpiStats.totalPendingBillsCount,
+      totalOutstandingAmount: kpiStats.totalOutstandingAmount,
     };
-  }, [awaitingQueue, recentReceipts, allBillings]);
+  }, [awaitingQueue, kpiStats]);
 
   // Payment methods breakdown
   const paymentMethods = useMemo(() => {

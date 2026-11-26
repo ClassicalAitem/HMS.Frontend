@@ -76,14 +76,20 @@ const PatientHmoHistoryFull = () => {
         const flattened = [];
         scoped.forEach((bill) => {
           (bill.itemDetails || []).forEach((item, idx) => {
-            const status = item.hmoStatus || 'pending';
+            const rawStatus = String(item.hmoStatus || bill.hmoStatus || '').toLowerCase();
             const isItemPaid = Boolean(
               item.paymentStatus === 'paid' ||
               item.paymentStatus === 'approved' ||
               bill.isCleared ||
               item.isCleared ||
-              status === 'approved'
+              rawStatus === 'approved'
             );
+            const status =
+              rawStatus && rawStatus !== 'pending'
+                ? rawStatus
+                : item.isClaimed || isItemPaid
+                  ? 'approved'
+                  : 'pending';
             const paymentStatus = isItemPaid ? 'paid' : (item.paymentStatus || 'unpaid');
 
             flattened.push({
@@ -91,6 +97,7 @@ const PatientHmoHistoryFull = () => {
               billId: bill.id,
               itemIdx: idx,
               description: item.description,
+              regimenSummary: item.regimenSummary || '',
               code: item.code,
               total: Number(item.total || 0),
               hmoCovered: Number(item.hmoCovered || 0),
@@ -102,10 +109,12 @@ const PatientHmoHistoryFull = () => {
               isPaid: isItemPaid,
               isClaimed: !!item.isClaimed,
               approvedBy:
+                item.hmoApprovedBy ||
+                bill.hmoApprovedBy ||
                 bill.hmoReviewedBy ||
                 `${bill.raisedBy?.firstName || ''} ${bill.raisedBy?.lastName || ''}`.trim() ||
                 '—',
-              approvedAt: bill.hmoReviewedAt || bill.updatedAt || null,
+              approvedAt: item.hmoApprovedAt || bill.hmoReviewedAt || bill.updatedAt || null,
             });
           });
         });
@@ -166,50 +175,56 @@ const PatientHmoHistoryFull = () => {
     return 'badge-neutral';
   };
 
-  const allClaimed = filteredRows.length > 0 && filteredRows.every(r => r.isClaimed);
-
-  const handleClaimAll = async (targetClaimed) => {
-    if (updatingId || filteredRows.length === 0) return;
-    setUpdatingId('bulk');
-    try {
-      const targetBillIds = new Set(filteredRows.map(r => r.billId));
-      const billsToUpdate = [];
-
-      rawBillings.forEach((bill) => {
-        if (!targetBillIds.has(bill.id)) return;
-        let changed = false;
-        const newItems = (bill.itemDetails || []).map((item) => {
-          if (Boolean(item.isClaimed) !== targetClaimed) {
-            changed = true;
-            return { ...item, isClaimed: targetClaimed };
-          }
-          return item;
+  const groupedBills = useMemo(() => {
+    const groupsMap = new Map();
+    filteredRows.forEach((row) => {
+      if (!groupsMap.has(row.billId)) {
+        const billObj = rawBillings.find((b) => b.id === row.billId);
+        groupsMap.set(row.billId, {
+          billId: row.billId,
+          billDate: billObj?.createdAt || row.approvedAt || null,
+          rows: [],
         });
-        if (changed) {
-          billsToUpdate.push({ billId: bill.id, itemDetails: newItems });
-        }
-      });
-
-      if (billsToUpdate.length > 0) {
-        await Promise.all(
-          billsToUpdate.map((b) => updateBilling(b.billId, { itemDetails: b.itemDetails }))
-        );
-
-        setRawBillings((prev) =>
-          prev.map((b) => {
-            const match = billsToUpdate.find((u) => u.billId === b.id);
-            return match ? { ...b, itemDetails: match.itemDetails } : b;
-          })
-        );
       }
+      groupsMap.get(row.billId).rows.push(row);
+    });
+    return Array.from(groupsMap.values()).sort(
+      (a, b) => new Date(b.billDate || 0).getTime() - new Date(a.billDate || 0).getTime()
+    );
+  }, [filteredRows, rawBillings]);
 
-      const updatedKeys = new Set(filteredRows.map(r => r.key));
-      setRows((prev) =>
-        prev.map((r) => (updatedKeys.has(r.key) ? { ...r, isClaimed: targetClaimed } : r))
+  const handleClaimBill = async (billId) => {
+    if (updatingId) return;
+    const bill = rawBillings.find((b) => b.id === billId);
+    if (!bill) return;
+
+    let changed = false;
+    const newItems = (bill.itemDetails || []).map((item) => {
+      if (!item.isClaimed) {
+        changed = true;
+        return { ...item, isClaimed: true };
+      }
+      return item;
+    });
+
+    if (!changed) {
+      toast('All items in this bill are already claimed');
+      return;
+    }
+
+    setUpdatingId(`bill-${billId}`);
+    try {
+      await updateBilling(billId, { itemDetails: newItems });
+
+      setRawBillings((prev) =>
+        prev.map((b) => (b.id === billId ? { ...b, itemDetails: newItems } : b))
       );
-      toast.success(targetClaimed ? 'All items marked as claimed' : 'All items marked as unclaimed');
+      setRows((prev) =>
+        prev.map((r) => (r.billId === billId ? { ...r, isClaimed: true } : r))
+      );
+      toast.success(`Bill #${billId.slice(-8)} marked as claimed`);
     } catch (err) {
-      console.error('Failed to update claim statuses', err);
+      console.error('Failed to update bill claim statuses', err);
       toast.error('Failed to update claim status');
     } finally {
       setUpdatingId(null);
@@ -217,17 +232,17 @@ const PatientHmoHistoryFull = () => {
   };
 
   const toggleClaimed = async (row) => {
-    if (updatingId) return;
+    if (updatingId || row.isClaimed) return;
     const bill = rawBillings.find(b => b.id === row.billId);
     if (!bill) return;
 
     const newItems = [...(bill.itemDetails || [])];
     const targetItem = newItems[row.itemIdx];
-    if (!targetItem) return;
+    if (!targetItem || targetItem.isClaimed) return;
 
     newItems[row.itemIdx] = {
       ...targetItem,
-      isClaimed: !targetItem.isClaimed,
+      isClaimed: true,
     };
 
     setUpdatingId(row.key);
@@ -235,10 +250,10 @@ const PatientHmoHistoryFull = () => {
       await updateBilling(bill.id, { itemDetails: newItems });
       
       setRawBillings(prev => prev.map(b => b.id === bill.id ? { ...b, itemDetails: newItems } : b));
-      setRows(prev => prev.map(r => r.key === row.key ? { ...r, isClaimed: !r.isClaimed } : r));
-      toast.success("Claim status updated");
+      setRows(prev => prev.map(r => r.key === row.key ? { ...r, isClaimed: true } : r));
+      toast.success("Item marked as claimed");
     } catch (err) {
-      console.error("Failed to toggle claim status", err);
+      console.error("Failed to update claim status", err);
       toast.error("Failed to update claim status");
     } finally {
       setUpdatingId(null);
@@ -322,7 +337,7 @@ const PatientHmoHistoryFull = () => {
 
         {/* Filter tabs */}
         <div className="flex gap-2 flex-wrap">
-          {['all', 'approved', 'pending', 'partial', 'rejected'].map((s) => (
+          {['all', 'approved', 'pending', 'rejected'].map((s) => (
             <button
               key={s}
               className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-outline'}`}
@@ -344,130 +359,109 @@ const PatientHmoHistoryFull = () => {
             </div>
           </div>
         ) : (
-          <>
-            {/* Totals summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="card bg-base-100 border border-base-200">
-                <div className="card-body p-4">
-                  <p className="text-xs text-base-content/50">Total Billed</p>
-                  <p className="text-lg font-semibold">₦{totals.total.toLocaleString()}</p>
+          <div className="space-y-4">
+            {groupedBills.map((group) => {
+              const billAllClaimed = group.rows.length > 0 && group.rows.every((r) => r.isClaimed);
+              const isUpdatingThisBill = updatingId === `bill-${group.billId}`;
+              return (
+                <div key={group.billId} className="card bg-base-100 border border-base-200">
+                  <div className="card-body p-0">
+                    <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-base-content">
+                          Bill #{group.billId?.slice(-8)}
+                        </p>
+                        <span className="badge badge-info badge-sm">{group.rows.length}</span>
+                        <span className="text-xs text-base-content/50">
+                          {safeFormat(group.billDate)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${billAllClaimed ? 'btn-success text-white' : 'btn-primary'} gap-1 font-medium`}
+                        onClick={() => handleClaimBill(group.billId)}
+                        disabled={!!updatingId || billAllClaimed}
+                      >
+                        {isUpdatingThisBill ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : billAllClaimed ? (
+                          '✓ Claimed'
+                        ) : (
+                          '✓ Claim All'
+                        )}
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="table table-sm w-full">
+                        <thead>
+                          <tr className="border-b border-base-200">
+                            <th>Item</th>
+                            <th>Decision</th>
+                            <th className="text-center w-28">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-primary"
+                                  checked={billAllClaimed}
+                                  onChange={() => handleClaimBill(group.billId)}
+                                  disabled={!!updatingId || billAllClaimed}
+                                  title={billAllClaimed ? 'All items claimed' : 'Claim all in this bill'}
+                                />
+                                <span>Claimed</span>
+                              </div>
+                            </th>
+                            <th>By</th>
+                            <th>When</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.rows.map((row) => (
+                            <tr key={row.key} className="border-b border-base-200 last:border-0">
+                              <td>
+                                <p className="text-sm">{row.description}</p>
+                                {row.regimenSummary && (
+                                  <p className="text-xs text-base-content/60">{row.regimenSummary}</p>
+                                )}
+                                <p className="text-xs text-base-content/50">{row.code}</p>
+                              </td>
+                              <td>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`badge badge-sm font-semibold uppercase ${statusBadgeClass(row.status)}`}
+                                  >
+                                    {row.status}
+                                  </span>
+                                  <button
+                                    className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
+                                    onClick={() => setEditingRow(row)}
+                                    title="Edit Decision"
+                                  >
+                                    <FaPen className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-primary"
+                                  checked={row.isClaimed}
+                                  onChange={() => toggleClaimed(row)}
+                                  disabled={row.isClaimed || updatingId === row.key || !!updatingId}
+                                  title={row.isClaimed ? 'Claimed (locked)' : 'Mark as claimed'}
+                                />
+                              </td>
+                              <td className="text-sm">{row.approvedBy}</td>
+                              <td className="text-sm text-base-content/60">{safeFormat(row.approvedAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="card bg-base-100 border border-base-200">
-                <div className="card-body p-4">
-                  <p className="text-xs text-base-content/50">HMO Covered</p>
-                  <p className="text-lg font-semibold text-success">
-                    ₦{totals.hmoCovered.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <div className="card bg-base-100 border border-base-200">
-                <div className="card-body p-4">
-                  <p className="text-xs text-base-content/50">Patient Owes</p>
-                  <p className="text-lg font-semibold text-error">
-                    ₦{totals.patientOwes.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-200">
-              <div className="card-body p-0">
-                <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-base-content flex items-center">
-                    Reviewed HMO Records
-                    <span className="ml-2 badge badge-info badge-sm">{filteredRows.length}</span>
-                  </p>
-                  <button
-                    type="button"
-                    className={`btn btn-xs ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'} gap-1 font-medium`}
-                    onClick={() => handleClaimAll(!allClaimed)}
-                    disabled={!!updatingId || filteredRows.length === 0}
-                  >
-                    {updatingId === 'bulk' ? (
-                      <span className="loading loading-spinner loading-xs" />
-                    ) : allClaimed ? (
-                      '↺ Unclaim All'
-                    ) : (
-                      '✓ Claim All'
-                    )}
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="table table-sm w-full">
-                    <thead>
-                      <tr className="border-b border-base-200">
-                        <th>Item</th>
-                        <th className="text-right">Total</th>
-                        <th className="text-right">HMO Covered</th>
-                        <th className="text-right">Patient Owes</th>
-                        <th>Decision</th>
-                        <th className="text-center w-28">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs checkbox-primary"
-                              checked={allClaimed}
-                              onChange={() => handleClaimAll(!allClaimed)}
-                              disabled={!!updatingId}
-                              title={allClaimed ? "Unclaim all" : "Claim all"}
-                            />
-                            <span>Claimed</span>
-                          </div>
-                        </th>
-                        <th>By</th>
-                        <th>When</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map((row) => (
-                        <tr key={row.key} className="border-b border-base-200 last:border-0">
-                          <td>
-                            <p className="text-sm">{row.description}</p>
-                            <p className="text-xs text-base-content/50">{row.code}</p>
-                          </td>
-                          <td className="text-right text-sm">₦{row.total.toLocaleString()}</td>
-                          <td className="text-right text-sm text-success">
-                            ₦{row.hmoCovered.toLocaleString()}
-                          </td>
-                          <td className="text-right text-sm text-error">
-                            ₦{row.patientOwes.toLocaleString()}
-                          </td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`badge badge-sm font-semibold uppercase ${statusBadgeClass(row.status)}`}
-                              >
-                                {row.status}
-                              </span>
-                              <button
-                                className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
-                                onClick={() => setEditingRow(row)}
-                                title="Edit Decision"
-                              >
-                                <FaPen className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs checkbox-primary"
-                              checked={row.isClaimed}
-                              onChange={() => toggleClaimed(row)}
-                              disabled={updatingId === row.key || updatingId === 'bulk'}
-                            />
-                          </td>
-                          <td className="text-sm">{row.approvedBy}</td>
-                          <td className="text-sm text-base-content/60">{safeFormat(row.approvedAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
 

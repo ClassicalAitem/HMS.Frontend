@@ -189,7 +189,10 @@ const ConsultationDetailModal = ({
         if (billingsRes.status === 'fulfilled') {
           const raw = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
           const list = Array.isArray(raw) ? raw : (raw?.billings || []);
-          setBillingsData(list);
+          const sorted = [...list].sort(
+            (a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+          );
+          setBillingsData(sorted);
         }
 
         if (ptRes.status === 'fulfilled') {
@@ -264,6 +267,13 @@ const ConsultationDetailModal = ({
     : hmosData.filter((h) => !h.dependantId);
   const activeHmos = subjectHmos.length > 0 ? subjectHmos : hmosData;
 
+  const hasBillingHmoActivity = billingsData.some(
+    (b) =>
+      b.hmoReviewedBy ||
+      b.hmoApprovedBy ||
+      (b.itemDetails || []).some((it) => it.hmoStatus && String(it.hmoStatus).toLowerCase() !== 'pending')
+  );
+
   const hasHmoCoverage = Boolean(
     activeHmos.length > 0 ||
     c.hmo ||
@@ -271,7 +281,9 @@ const ConsultationDetailModal = ({
     c.hmoApprovalStatus ||
     c.patient?.hmo ||
     patientDetails?.hmos?.length > 0 ||
-    c.paidBy === 'hmo'
+    c.paidBy === 'hmo' ||
+    hasBillingHmoActivity ||
+    (typeof window !== 'undefined' && window.location.pathname.includes('/hmo'))
   );
 
   const derivedHmoStatus = (() => {
@@ -334,7 +346,16 @@ const ConsultationDetailModal = ({
       const pId = String(pres?.id || pres?._id || '');
       const medName = String(med.drugName || med.name || '').trim().toLowerCase();
 
+      const resolveBillItemStatus = (item, bill) => {
+        if (!item) return null;
+        const st = String(item.hmoStatus || item.hmoApprovalStatus || '').toLowerCase();
+        if (st && st !== 'pending') return st;
+        if (item.isClaimed || item.paymentStatus === 'paid' || item.isCleared || bill?.isCleared) return 'approved';
+        return st || null;
+      };
+
       let matchedBillItem = null;
+      let matchedBill = null;
       for (const bill of billingsData) {
         for (const item of bill.itemDetails || []) {
           const itemDesc = String(item.description || '').trim().toLowerCase();
@@ -345,20 +366,26 @@ const ConsultationDetailModal = ({
 
           const itemPId = item.prescriptionId ? String(item.prescriptionId) : null;
           if (itemPId && pId && itemPId === pId && (nameMatch || idMatch)) {
-            matchedBillItem = item;
-            break;
+            const st = resolveBillItemStatus(item, bill);
+            if (!matchedBillItem || (st && st !== 'pending')) {
+              matchedBillItem = item;
+              matchedBill = bill;
+              if (st && st !== 'pending') break;
+            }
           }
           if (!matchedBillItem && (nameMatch || idMatch)) {
             matchedBillItem = item;
+            matchedBill = bill;
           }
         }
-        if (matchedBillItem && matchedBillItem.prescriptionId && String(matchedBillItem.prescriptionId) === pId) {
+        const curSt = resolveBillItemStatus(matchedBillItem, matchedBill);
+        if (matchedBillItem && matchedBillItem.prescriptionId && String(matchedBillItem.prescriptionId) === pId && curSt && curSt !== 'pending') {
           break;
         }
       }
 
       if (matchedBillItem) {
-        const status = matchedBillItem.hmoStatus || matchedBillItem.hmoApprovalStatus;
+        const status = resolveBillItemStatus(matchedBillItem, matchedBill);
         if (status) return status;
       }
 
@@ -392,7 +419,16 @@ const ConsultationDetailModal = ({
       const tName = typeof test === 'string' ? test : (test?.name || test?.testName || '');
       const normTName = tName.trim().toLowerCase();
 
+      const resolveTestBillItemStatus = (item, bill) => {
+        if (!item) return null;
+        const st = String(item.hmoStatus || item.hmoApprovalStatus || '').toLowerCase();
+        if (st && st !== 'pending') return st;
+        if (item.isClaimed || item.paymentStatus === 'paid' || item.isCleared || bill?.isCleared) return 'approved';
+        return st || null;
+      };
+
       let matchedBillItem = null;
+      let matchedBill = null;
       for (const bill of billingsData) {
         for (const item of bill.itemDetails || []) {
           const itemDesc = String(item.description || '').trim().toLowerCase();
@@ -401,20 +437,26 @@ const ConsultationDetailModal = ({
 
           const itemInvId = item.investigationId ? String(item.investigationId) : null;
           if (itemInvId && invId && itemInvId === invId && (nameMatch || idMatch)) {
-            matchedBillItem = item;
-            break;
+            const st = resolveTestBillItemStatus(item, bill);
+            if (!matchedBillItem || (st && st !== 'pending')) {
+              matchedBillItem = item;
+              matchedBill = bill;
+              if (st && st !== 'pending') break;
+            }
           }
           if (!matchedBillItem && (nameMatch || idMatch)) {
             matchedBillItem = item;
+            matchedBill = bill;
           }
         }
-        if (matchedBillItem && matchedBillItem.investigationId && String(matchedBillItem.investigationId) === invId) {
+        const curSt = resolveTestBillItemStatus(matchedBillItem, matchedBill);
+        if (matchedBillItem && matchedBillItem.investigationId && String(matchedBillItem.investigationId) === invId && curSt && curSt !== 'pending') {
           break;
         }
       }
 
       if (matchedBillItem) {
-        const status = matchedBillItem.hmoStatus || matchedBillItem.hmoApprovalStatus;
+        const status = resolveTestBillItemStatus(matchedBillItem, matchedBill);
         if (status) return status;
       }
 
@@ -1217,7 +1259,7 @@ const ConsultationDetailModal = ({
                                       <HmoStatusBadge status={effectiveHmoStatus} size="xs" />
                                     )}
                                   </div>
-                                  {item.amount && (
+                                  {!hasHmoCoverage && item.amount && (
                                     <span className="font-mono text-base-content/80">₦{Number(item.amount).toLocaleString()}</span>
                                   )}
                                 </div>

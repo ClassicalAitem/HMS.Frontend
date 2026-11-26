@@ -117,7 +117,7 @@ const SendPatientModal = ({
       roles = roles.filter(r => r !== 'labtechnician');
     }
     if (isDoctor) {
-      roles = roles.filter(r => r !== 'pharmacist' && r !== 'medical-laboratory' && r !== 'labtechnician');
+      roles = roles.filter(r => r !== 'medical-laboratory' && r !== 'labtechnician');
     }
     if (isFrontDesk && !notForConsultation) {
       // Restrict frontdesk to Cashier or HMO if they are here for consultation

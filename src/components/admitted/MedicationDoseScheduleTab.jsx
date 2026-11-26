@@ -15,6 +15,7 @@ import {
   FaUserInjured,
 } from 'react-icons/fa';
 import { getAdmissionMedicationAlerts, administerMedication } from '@/services/api/nurseAPI';
+import { getSocket } from '@/services/socket';
 import toast from 'react-hot-toast';
 
 const MedicationDoseScheduleTab = ({ userRole = 'nurse', onNavigateToAdmission }) => {
@@ -27,9 +28,9 @@ const MedicationDoseScheduleTab = ({ userRole = 'nurse', onNavigateToAdmission }
   const [quickAdminModalAlert, setQuickAdminModalAlert] = useState(null);
   const [quickNotes, setQuickNotes] = useState('');
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await getAdmissionMedicationAlerts();
       const list = res?.alerts || [];
       setAlerts(Array.isArray(list) ? list : []);
@@ -37,14 +38,40 @@ const MedicationDoseScheduleTab = ({ userRole = 'nurse', onNavigateToAdmission }
       console.warn('MedicationDoseScheduleTab: loadData error', err);
       toast.error('Failed to load medication schedule');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+
+    // Event-driven updates via WebSocket & local events
+    const socket = getSocket();
+    const handleMedUpdate = () => {
+      loadData(true);
+    };
+    socket?.on('admission:medication-updated', handleMedUpdate);
+    window.addEventListener('hms:medication-administered', handleMedUpdate);
+
+    // Refresh when tab gains focus
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Relaxed background sync every 5 minutes (instead of aggressive 30 seconds)
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 300000);
+
+    return () => {
+      clearInterval(interval);
+      socket?.off('admission:medication-updated', handleMedUpdate);
+      window.removeEventListener('hms:medication-administered', handleMedUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const handleOpenPatientAdmission = (item) => {
@@ -94,7 +121,8 @@ const MedicationDoseScheduleTab = ({ userRole = 'nurse', onNavigateToAdmission }
       );
       setQuickAdminModalAlert(null);
       setQuickNotes('');
-      loadData();
+      window.dispatchEvent(new CustomEvent('hms:medication-administered'));
+      loadData(true);
     } catch (err) {
       console.error('Failed to administer dose:', err);
       toast.error(err?.response?.data?.error || 'Failed to record medication administration.');

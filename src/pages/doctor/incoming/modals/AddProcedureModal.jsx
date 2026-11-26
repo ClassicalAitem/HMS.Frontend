@@ -124,14 +124,13 @@ const AddProcedureModal = ({
       let finalPrice = Number(form.price) || 0;
       let finalCode = form.procedureCode;
 
-      if (!finalServiceChargeId || finalPrice === 0) {
+      if (!finalServiceChargeId) {
         const match = surgicalCharges.find(
           (sc) =>
             String(sc.service || sc.name || '').toLowerCase() === form.procedureName.trim().toLowerCase()
         );
         if (match) {
           finalServiceChargeId = finalServiceChargeId || match.id || match._id;
-          finalPrice = finalPrice || Number(match.amount || match.price) || 0;
           finalCode = finalCode || match.code || match.procedureCode;
         }
       }
@@ -145,7 +144,6 @@ const AddProcedureModal = ({
         procedureName: form.procedureName,
         procedureCode: finalCode || undefined,
         serviceChargeId: finalServiceChargeId || undefined,
-        price: finalPrice,
         department: form.department,
         notes: form.notes,
         status: 'scheduled',
@@ -281,9 +279,6 @@ const AddProcedureModal = ({
                         </p>
                       )}
                     </div>
-                    <span className="badge badge-outline badge-primary font-semibold text-xs">
-                      ₦{Number(item.amount || item.price || 0).toLocaleString()}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -299,32 +294,8 @@ const AddProcedureModal = ({
               )}
           </div>
 
-          {/* Pricing & Procedure Code Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-control w-full">
-              <label className="label py-1">
-                <span className="label-text font-medium text-xs">
-                  Standard Bill Amount (₦)
-                </span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-base-content/50">
-                  ₦
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="0.00"
-                  className="input input-bordered w-full pl-8 font-semibold text-sm"
-                  value={form.price || ''}
-                  onChange={(e) =>
-                    handleChange('price', Number(e.target.value) || 0)
-                  }
-                />
-              </div>
-            </div>
-
+          {/* Procedure Code */}
+          <div className="grid grid-cols-1 gap-4">
             <div className="form-control w-full">
               <label className="label py-1">
                 <span className="label-text font-medium text-xs">

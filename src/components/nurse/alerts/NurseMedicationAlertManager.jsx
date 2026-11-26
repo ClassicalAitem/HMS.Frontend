@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { getAdmissionMedicationAlerts } from '@/services/api/nurseAPI';
+import { getSocket } from '@/services/socket';
 import audioAlert from '@/utils/audioAlert';
 import MedicationAlertModal from './MedicationAlertModal';
 import { FaPills, FaBell } from 'react-icons/fa';
@@ -14,6 +15,7 @@ export const NurseMedicationAlertManager = () => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const [allAlerts, setAllAlerts] = useState([]);
+  const allAlertsRef = useRef([]);
   const [activeDueAlerts, setActiveDueAlerts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [snoozeMap, setSnoozeMap] = useState(() => {
@@ -80,7 +82,15 @@ export const NurseMedicationAlertManager = () => {
       const currentDismissed = { ...dismissedMap };
 
       const filtered = (alertsList || []).filter((alert) => {
-        if (!alert.isDue || alert.isAdministered) return false;
+        if (alert.isAdministered) return false;
+
+        // Dynamic in-memory clock check: alert is due if current time is within trigger window
+        const schedTime = new Date(alert.scheduledDateTime).getTime();
+        const triggerTime = new Date(alert.alertTriggerTime || schedTime - 10 * 60 * 1000).getTime();
+        const overdueLimit = schedTime + 2 * 60 * 60 * 1000;
+        const isCurrentlyDue = alert.isDue || (now >= triggerTime && now <= overdueLimit);
+
+        if (!isCurrentlyDue) return false;
 
         // Check if snoozed
         const snoozedUntil = currentSnooze[alert.alertId];
@@ -111,6 +121,7 @@ export const NurseMedicationAlertManager = () => {
     try {
       const res = await getAdmissionMedicationAlerts();
       const list = res?.alerts || [];
+      allAlertsRef.current = list;
       setAllAlerts(list);
 
       const due = evaluateDueAlerts(list);
@@ -129,17 +140,60 @@ export const NurseMedicationAlertManager = () => {
     }
   }, [shouldMonitor, evaluateDueAlerts]);
 
-  // Periodic polling every 30 seconds when on eligible routes
+  // Event-driven & in-memory evaluation:
+  // - Evaluates due alerts locally in memory every 30s with ZERO network requests
+  // - Listens to WebSocket 'admission:medication-updated' to fetch fresh data instantly when medications change
+  // - Performs relaxed background sync only every 5 minutes
   useEffect(() => {
     if (!shouldMonitor) return undefined;
 
+    // Initial load
     fetchAlerts();
-    const interval = setInterval(() => {
-      fetchAlerts();
+
+    // In-memory evaluation timer (checks local clock against scheduled doses without calling the server)
+    const localTimer = setInterval(() => {
+      if (allAlertsRef.current.length > 0) {
+        const due = evaluateDueAlerts(allAlertsRef.current);
+        setActiveDueAlerts(due);
+        if (due.length > 0) {
+          setIsModalOpen(true);
+          audioAlert.start();
+        } else {
+          audioAlert.stop();
+          setIsModalOpen(false);
+        }
+      }
     }, 30000);
 
-    return () => clearInterval(interval);
-  }, [shouldMonitor, fetchAlerts]);
+    // Real-time WebSocket event listener
+    const socket = getSocket();
+    const handleMedUpdate = () => {
+      fetchAlerts();
+    };
+    socket?.on('admission:medication-updated', handleMedUpdate);
+    window.addEventListener('hms:medication-administered', handleMedUpdate);
+
+    // Refresh when tab regains focus
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAlerts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Relaxed background re-sync (every 5 minutes instead of 30 seconds)
+    const bgSyncInterval = setInterval(() => {
+      fetchAlerts();
+    }, 300000);
+
+    return () => {
+      clearInterval(localTimer);
+      clearInterval(bgSyncInterval);
+      socket?.off('admission:medication-updated', handleMedUpdate);
+      window.removeEventListener('hms:medication-administered', handleMedUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [shouldMonitor, fetchAlerts, evaluateDueAlerts]);
 
   const handleSnooze = (minutes = 5) => {
     audioAlert.stop();

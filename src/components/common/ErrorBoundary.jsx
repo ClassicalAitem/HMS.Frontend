@@ -14,30 +14,42 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an unhandled error:", error, errorInfo);
 
-    // If chunk loading failed (e.g. new deployment or stale dev chunk), reload page
+    // If chunk or module loading failed (e.g. new deployment or stale dev module), clear caches and reload
+    const msg = error?.message || "";
     const isChunkError =
-      error?.message?.includes("Failed to fetch dynamically imported module") ||
-      error?.message?.includes("Importing a module script failed") ||
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("Importing a module script failed") ||
+      msg.includes("error loading dynamically imported module") ||
+      msg.includes("does not provide an export named") ||
       error?.name === "ChunkLoadError" ||
-      error?.message?.includes("Cannot read properties of null (reading 'useContext')");
+      msg.includes("Cannot read properties of null (reading 'useContext')");
 
     if (isChunkError) {
       const now = Date.now();
       const lastReload = parseInt(sessionStorage.getItem("chunk_reload_time") || "0", 10);
       if (now - lastReload > 8000) {
         sessionStorage.setItem("chunk_reload_time", String(now));
-        window.location.reload();
+        this.clearCachesAndReload();
       }
     }
   }
 
+  clearCachesAndReload = async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      // ignore cache API errors
+    }
+    window.location.reload();
+  };
+
   handleReload = () => {
     sessionStorage.removeItem("chunk_reload_time");
     sessionStorage.removeItem("chunk_reload_attempted");
-    // Cache-bust reload to ensure latest bundles are fetched from server
-    const url = new URL(window.location.href);
-    url.searchParams.set('_r', Date.now().toString());
-    window.location.replace(url.toString());
+    this.clearCachesAndReload();
   };
 
   handleGoDashboard = () => {

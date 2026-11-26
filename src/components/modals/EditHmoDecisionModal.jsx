@@ -3,30 +3,19 @@ import { FaTimes } from 'react-icons/fa';
 
 const EditHmoDecisionModal = ({ isOpen, onClose, item, onSave, submitting }) => {
   const [decision, setDecision] = useState('approved');
-  const [hmoCovered, setHmoCovered] = useState('');
 
   useEffect(() => {
     if (isOpen && item) {
-      setDecision(item.status || 'approved');
-      setHmoCovered(item.hmoCovered || 0);
+      setDecision(item.status === 'rejected' ? 'rejected' : 'approved');
     }
   }, [isOpen, item]);
 
   if (!isOpen || !item) return null;
 
   const total = item.total || 0;
-  const isPartial = decision === 'partial';
 
   const handleSave = () => {
-    let finalCovered = 0;
-    if (decision === 'approved') finalCovered = total;
-    else if (decision === 'partial') finalCovered = Number(hmoCovered) || 0;
-    
-    // Validate partial covered amount
-    if (decision === 'partial' && (finalCovered <= 0 || finalCovered >= total)) {
-      return; // Validation handled via required/min/max in input, but safe check here
-    }
-
+    const finalCovered = decision === 'approved' ? total : 0;
     onSave(decision, finalCovered);
   };
 
@@ -47,8 +36,10 @@ const EditHmoDecisionModal = ({ isOpen, onClose, item, onSave, submitting }) => 
         <div className="p-6 space-y-5">
           <div>
             <p className="text-sm font-medium text-base-content">{item.description}</p>
+            {item.regimenSummary && (
+              <p className="text-xs text-base-content/60 mt-0.5">{item.regimenSummary}</p>
+            )}
             <p className="text-xs text-base-content/60">Code: {item.code}</p>
-            <p className="text-sm font-semibold mt-1">Total Bill: ₦{total.toLocaleString()}</p>
           </div>
 
           <div className="space-y-4">
@@ -61,26 +52,9 @@ const EditHmoDecisionModal = ({ isOpen, onClose, item, onSave, submitting }) => 
                 disabled={submitting}
               >
                 <option value="approved">Approved</option>
-                <option value="partial">Partial</option>
                 <option value="rejected">Rejected</option>
               </select>
             </div>
-
-            {isPartial && (
-              <div className="form-control animate-in fade-in slide-in-from-top-2">
-                <label className="label text-sm font-medium pb-1">HMO Covered Amount (₦)</label>
-                <input 
-                  type="number"
-                  className="input input-bordered w-full"
-                  placeholder="Enter amount"
-                  value={hmoCovered}
-                  onChange={(e) => setHmoCovered(e.target.value)}
-                  disabled={submitting}
-                  min={1}
-                  max={total - 1}
-                />
-              </div>
-            )}
           </div>
         </div>
 
@@ -95,7 +69,7 @@ const EditHmoDecisionModal = ({ isOpen, onClose, item, onSave, submitting }) => 
           <button 
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={submitting || (isPartial && (!hmoCovered || hmoCovered <= 0 || hmoCovered >= total))}
+            disabled={submitting}
           >
             {submitting ? <span className="loading loading-spinner loading-sm" /> : 'Save Changes'}
           </button>

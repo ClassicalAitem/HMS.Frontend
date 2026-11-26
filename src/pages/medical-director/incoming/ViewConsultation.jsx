@@ -385,8 +385,8 @@ const ViewConsultation = () => {
       const targetPatientId = patientId || consultation?.patientId || consultation?.patient?._id || consultation?.patient?.id;
 
       const matchesTarget = (rec) => {
-        if (consultationId && String(rec.consultationId || '') === String(consultationId)) {
-          return true;
+        if (consultationId) {
+          return String(rec.consultationId || '') === String(consultationId);
         }
         if (targetPatientId && String(rec.patientId || '') === String(targetPatientId)) {
           if (dependantId) {
@@ -1449,13 +1449,6 @@ const ViewConsultation = () => {
       onClick={() => openBillModal(setIsBillModalOpen)}
     >
       Send to cashier
-    </button>
-    <button
-      type="button"
-      className="btn btn-sm btn-outline btn-secondary"
-      onClick={() => openBillModal(setIsSendToHmoModalOpen)}
-    >
-      Send to HMO
     </button>
 
     {canEdit && (

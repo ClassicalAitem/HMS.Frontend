@@ -653,8 +653,8 @@ useEffect(() => {
 
   const toggleClaimed = (billingId, itemIdx) => {
     const current = itemDecisionsRef.current[billingId]?.[itemIdx] || {};
-    const nextClaimed = !current.isClaimed;
-    saveItemDecision(billingId, itemIdx, current.status || 'pending', current.hmoCovered || 0, nextClaimed);
+    if (current.isClaimed) return;
+    saveItemDecision(billingId, itemIdx, current.status || 'pending', current.hmoCovered || 0, true);
   };
 
   const handleBulkDecision = async (status) => {
@@ -1078,14 +1078,14 @@ useEffect(() => {
                   {submitting ? <span className="loading loading-spinner loading-xs" /> : 'Approve All'}
                 </button>
                 <button
-                  className={`btn btn-sm ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'}`}
-                  onClick={() => handleBulkClaim(!allClaimed)}
-                  disabled={submitting || isAnySaving}
+                  className={`btn btn-sm ${allClaimed ? 'btn-success text-white' : 'btn-primary'}`}
+                  onClick={() => handleBulkClaim(true)}
+                  disabled={submitting || isAnySaving || allClaimed}
                 >
                   {submitting ? (
                     <span className="loading loading-spinner loading-xs" />
                   ) : allClaimed ? (
-                    '↺ Unclaim All'
+                    '✓ All Claimed'
                   ) : (
                     '✓ Claim All'
                   )}
@@ -1164,9 +1164,9 @@ useEffect(() => {
                                   type="checkbox"
                                   className="checkbox checkbox-xs checkbox-primary"
                                   checked={allClaimed}
-                                  onChange={() => handleBulkClaim(!allClaimed)}
-                                  disabled={submitting || isAnySaving}
-                                  title={allClaimed ? "Unclaim all" : "Claim all"}
+                                  onChange={() => handleBulkClaim(true)}
+                                  disabled={submitting || isAnySaving || allClaimed}
+                                  title={allClaimed ? "All items claimed" : "Claim all"}
                                 />
                                 <span>Claimed</span>
                               </div>
@@ -1264,8 +1264,8 @@ useEffect(() => {
                                     className="checkbox checkbox-sm checkbox-primary"
                                     checked={!!itemDecisions[bill.id]?.[idx]?.isClaimed}
                                     onChange={() => toggleClaimed(bill.id, idx)}
-                                    disabled={submitting || isAnySaving}
-                                    title="Toggle Claimed status"
+                                    disabled={!!itemDecisions[bill.id]?.[idx]?.isClaimed || submitting || isAnySaving}
+                                    title={itemDecisions[bill.id]?.[idx]?.isClaimed ? "Claimed (locked)" : "Mark as claimed"}
                                   />
                                 </td>
                                 <td className="text-xs text-base-content/70">

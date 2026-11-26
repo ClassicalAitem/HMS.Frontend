@@ -57,7 +57,6 @@ const AddLabTestModal = ({ isOpen, onClose, onAdd }) => {
       onAdd({ 
         name: selectedService.service || selectedService.name,
         serviceId: selectedService.id || selectedService._id,
-        amount: selectedService.amount
       });
       setQuery('');
       setSelectedService(null);
@@ -120,11 +119,6 @@ const AddLabTestModal = ({ isOpen, onClose, onAdd }) => {
                             {service?.category && (
                               <div className="text-xs opacity-75 mt-0.5">{service.category}</div>
                             )}
-                          </div>
-                          <div className={`text-sm font-semibold whitespace-nowrap ml-2 ${
-                            isSelected ? '' : 'text-base-content/70'
-                          }`}>
-                            ₦{Number(service?.amount || 0).toLocaleString()}
                           </div>
                         </div>
                       </button>

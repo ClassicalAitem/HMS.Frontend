@@ -307,11 +307,6 @@ const OrderInvestigationModal = ({
                       <span className="badge badge-outline">
                         Test #{index + 1}
                       </span>
-                      {watch(`tests.${index}.name`) && !watch(`tests.${index}.isCustom`) && Number(watch(`tests.${index}.price`)) > 0 && (
-                        <span className="badge badge-success badge-sm font-semibold text-white">
-                          ₦{Number(watch(`tests.${index}.price`)).toLocaleString()}
-                        </span>
-                      )}
                       {watch(`tests.${index}.name`) && watch(`tests.${index}.isCustom`) && (
                         <span className="badge badge-warning badge-sm font-medium">
                           Custom (Unbilled)
@@ -400,10 +395,6 @@ const OrderInvestigationModal = ({
                                   {availabilityBadge}
                                 </span>
                               </div>
-
-                              <span className="text-xs text-gray-500 font-semibold">
-                                ₦{Number(test.amount ?? test.price ?? 0).toLocaleString()}
-                              </span>
 
                             </div>
                           );

@@ -18,6 +18,8 @@ export const NotificationProvider = ({ children }) => {
   const [incomingUpdate, setIncomingUpdate] = useState(0);
   const [labReadyUpdate, setLabReadyUpdate] = useState(0);
   const roleRef = useRef(null);
+  const lastLabRefreshRef = useRef(0);
+  const queueDebounceRef = useRef(null);
 
   const refreshQueueCount = useCallback(() => {
     const role = roleRef.current;
@@ -27,7 +29,14 @@ export const NotificationProvider = ({ children }) => {
       .catch((err) => showErrorToast(err, 'Unable to refresh the queue count.'));
   }, []);
 
-  const refreshLabReadyCount = useCallback(async () => {
+  const refreshLabReadyCount = useCallback(async (force = false) => {
+    const nowTime = Date.now();
+    // Throttle: avoid hitting database for full 100-item arrays if fetched within last 3 minutes
+    if (!force && nowTime - lastLabRefreshRef.current < 180000) {
+      return;
+    }
+    lastLabRefreshRef.current = nowTime;
+
     try {
       const readyFilter = 'lab_completed,sonography_completed';
       const [patientsRes, dependantsRes] = await Promise.allSettled([
@@ -136,7 +145,8 @@ export const NotificationProvider = ({ children }) => {
     const handleLabReady = (payload) => {
       setLastUpdate(Date.now());
       setLabReadyUpdate((update) => update + 1);
-      refreshLabReadyCount();
+      // Increment count locally on real-time event without heavy DB re-query
+      setLabReadyCount((prev) => prev + 1);
       if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
@@ -167,8 +177,12 @@ export const NotificationProvider = ({ children }) => {
     const handleStatusChanged = () => {
       setLastUpdate(Date.now());
       setIncomingUpdate((update) => update + 1);
-      refreshQueueCount();
-      refreshLabReadyCount();
+
+      // Debounce queue count refresh to prevent spamming server on rapid patient updates
+      if (queueDebounceRef.current) clearTimeout(queueDebounceRef.current);
+      queueDebounceRef.current = setTimeout(() => {
+        refreshQueueCount();
+      }, 1500);
     };
     socket.on('patient:statusChanged', handleStatusChanged);
     socket.on('queue:midnight-reset', handleStatusChanged);

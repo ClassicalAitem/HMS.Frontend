@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaPills,
@@ -11,6 +11,7 @@ import {
   FaSyncAlt,
 } from 'react-icons/fa';
 import { getAdmissionMedicationAlerts, administerMedication } from '@/services/api/nurseAPI';
+import { getSocket } from '@/services/socket';
 import toast from 'react-hot-toast';
 
 const InpatientMedicationAlertsWidget = () => {
@@ -20,25 +21,49 @@ const InpatientMedicationAlertsWidget = () => {
   const [filter, setFilter] = useState('due'); // 'due' | 'all' | 'administered'
   const [administeringId, setAdministeringId] = useState(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await getAdmissionMedicationAlerts();
       setAlerts(res?.alerts || []);
     } catch (err) {
       console.warn('InpatientMedicationAlertsWidget: load error', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
+
+    // Event-driven updates via WebSocket & local administration events
+    const socket = getSocket();
+    const handleMedUpdate = () => {
+      loadData(true);
+    };
+    socket?.on('admission:medication-updated', handleMedUpdate);
+    window.addEventListener('hms:medication-administered', handleMedUpdate);
+
+    // Refresh when tab gains focus
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Relaxed background sync every 5 minutes (instead of 45 seconds)
     const interval = setInterval(() => {
-      loadData();
-    }, 45000);
-    return () => clearInterval(interval);
-  }, []);
+      loadData(true);
+    }, 300000);
+
+    return () => {
+      clearInterval(interval);
+      socket?.off('admission:medication-updated', handleMedUpdate);
+      window.removeEventListener('hms:medication-administered', handleMedUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadData]);
 
   const handleAdminister = async (alert) => {
     try {
@@ -54,7 +79,8 @@ const InpatientMedicationAlertsWidget = () => {
 
       await administerMedication(alert.admissionId, payload);
       toast.success(`Administered ${alert.drugName} for ${alert.patientName}!`);
-      loadData();
+      window.dispatchEvent(new CustomEvent('hms:medication-administered'));
+      loadData(true);
     } catch (err) {
       console.error('Failed to administer from widget:', err);
       toast.error(err?.response?.data?.error || 'Failed to record administration.');
