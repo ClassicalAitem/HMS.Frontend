@@ -6,6 +6,8 @@ import StaffDirectoryModal from "@/components/chat/StaffDirectoryModal";
 import BroadcastModal from "@/components/chat/BroadcastModal";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
 import PatientTagSelector from "@/components/chat/PatientTagSelector";
+import MessageInfoModal from "@/components/chat/MessageInfoModal";
+import { MessageReactionPicker, MessageReactionBadges } from "@/components/chat/MessageReactions";
 import {
   FaPaperPlane,
   FaComments,
@@ -22,6 +24,9 @@ import {
   FaPencilAlt,
   FaTrashAlt,
   FaBan,
+  FaSmile,
+  FaCheckDouble,
+  FaInfoCircle,
 } from "react-icons/fa";
 
 const renderMessageContent = (content, highlight = "") => {
@@ -186,6 +191,8 @@ export const MessagesPage = () => {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
+  const [selectedInfoMsg, setSelectedInfoMsg] = useState(null);
 
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
@@ -316,8 +323,35 @@ export const MessagesPage = () => {
       );
     };
 
+    const handleRemoteReaction = (e) => {
+      const { messageId, reactions } = e.detail || {};
+      if (!messageId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, reactions } : m))
+      );
+    };
+
+    const handleRemoteMessagesRead = (e) => {
+      const { conversationId, userId, userName, userRole, readAt, messageIds } = e.detail || {};
+      if (!conversationId || !messageIds || !Array.isArray(messageIds)) return;
+      if (selectedConv && selectedConv.id === conversationId) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (!messageIds.includes(m.id)) return m;
+            let currentReadBy = Array.isArray(m.readBy) ? [...m.readBy] : [];
+            if (!currentReadBy.some((r) => r.userId === userId)) {
+              currentReadBy.push({ userId, userName, userRole, readAt });
+            }
+            return { ...m, readBy: currentReadBy };
+          })
+        );
+      }
+    };
+
     window.addEventListener("hms:chat-message-edited", handleRemoteEdit);
     window.addEventListener("hms:chat-message-deleted", handleRemoteDelete);
+    window.addEventListener("hms:chat-message-reaction", handleRemoteReaction);
+    window.addEventListener("hms:chat-messages-read", handleRemoteMessagesRead);
 
     const socket = getSocket();
     const handleTyping = ({ conversationId, userName, userId }) => {
@@ -338,10 +372,45 @@ export const MessagesPage = () => {
       window.removeEventListener("hms:chat-new-message", handleGlobalMessage);
       window.removeEventListener("hms:chat-message-edited", handleRemoteEdit);
       window.removeEventListener("hms:chat-message-deleted", handleRemoteDelete);
+      window.removeEventListener("hms:chat-message-reaction", handleRemoteReaction);
+      window.removeEventListener("hms:chat-messages-read", handleRemoteMessagesRead);
       socket.off("chat:typing", handleTyping);
       socket.off("chat:stop_typing", handleStopTyping);
     };
   }, [selectedConv, currentUserId]);
+
+  const handleToggleReaction = async (messageId, emoji) => {
+    try {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          let currentReactions = Array.isArray(m.reactions) ? [...m.reactions] : [];
+          const userIdx = currentReactions.findIndex((r) => r.userId === currentUserId);
+          if (userIdx > -1) {
+            if (currentReactions[userIdx].emoji === emoji) {
+              currentReactions.splice(userIdx, 1);
+            } else {
+              currentReactions[userIdx] = {
+                emoji,
+                userId: currentUserId,
+                userName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Staff",
+              };
+            }
+          } else {
+            currentReactions.push({
+              emoji,
+              userId: currentUserId,
+              userName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Staff",
+            });
+          }
+          return { ...m, reactions: currentReactions };
+        })
+      );
+      await chatAPI.toggleReaction(messageId, emoji);
+    } catch (err) {
+      console.error("Failed to toggle reaction:", err);
+    }
+  };
 
   const handleStartEdit = (msg) => {
     const diffMins = (Date.now() - new Date(msg.createdAt).getTime()) / (1000 * 60);
@@ -804,7 +873,7 @@ export const MessagesPage = () => {
             </div>
 
             {/* Message Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-16 text-xs text-base-content/50 gap-2">
                   <FaSpinner className="animate-spin text-primary" /> Loading messages...
@@ -852,25 +921,45 @@ export const MessagesPage = () => {
 
                       <div className="flex items-center gap-1 max-w-[75%]">
                         {isMe && (
-                          <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 shrink-0">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-xs border border-base-300/80 shadow-xs px-1.5 py-0.5 rounded-full">
+                            {!msg.isDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
+                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                title="Add reaction"
+                              >
+                                <FaSmile className="text-sm" />
+                              </button>
+                            )}
                             {canEdit && (
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(msg)}
-                                className="p-1 text-base-content/40 hover:text-warning rounded-full transition"
+                                className="p-1.5 text-base-content/60 hover:text-warning hover:bg-base-200/80 rounded-full transition cursor-pointer"
                                 title="Edit message"
                               >
-                                <FaPencilAlt className="text-[10px]" />
+                                <FaPencilAlt className="text-xs" />
                               </button>
                             )}
                             {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1 text-base-content/40 hover:text-error rounded-full transition"
+                                className="p-1.5 text-base-content/60 hover:text-error hover:bg-base-200/80 rounded-full transition cursor-pointer"
                                 title="Delete message"
                               >
-                                <FaTrashAlt className="text-[10px]" />
+                                <FaTrashAlt className="text-xs" />
+                              </button>
+                            )}
+                            {!msg.isDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedInfoMsg(msg)}
+                                className="p-1.5 text-base-content/60 hover:text-info hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                title="Message Info"
+                              >
+                                <FaInfoCircle className="text-xs" />
                               </button>
                             )}
                             {!msg.isDeleted && (
@@ -885,10 +974,10 @@ export const MessagesPage = () => {
                                   setEditingMessage(null);
                                   messageInputRef.current?.focus();
                                 }}
-                                className="p-1 text-base-content/40 hover:text-primary rounded-full transition"
+                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
                                 title="Reply to message"
                               >
-                                <FaReply className="text-[10px]" />
+                                <FaReply className="text-xs" />
                               </button>
                             )}
                           </div>
@@ -984,13 +1073,54 @@ export const MessagesPage = () => {
                                   <span className="italic text-[8px] opacity-75">(edited)</span>
                                 )}
                                 <span>{formatTime(msg.createdAt)}</span>
+                                {isMe && !msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedInfoMsg(msg);
+                                    }}
+                                    className="cursor-pointer hover:scale-115 transition inline-flex items-center ml-0.5"
+                                    title={
+                                      Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId)
+                                        ? "Read by recipient(s) - Click for info"
+                                        : "Delivered - Click for info"
+                                    }
+                                  >
+                                    {Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId) ? (
+                                      <FaCheckDouble className="text-sky-400 text-[10px]" />
+                                    ) : (
+                                      <FaCheckDouble className="opacity-55 text-[10px]" />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );
                         })()}
 
                         {!isMe && (
-                          <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 shrink-0">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-xs border border-base-300/80 shadow-xs px-1.5 py-0.5 rounded-full">
+                            {!msg.isDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
+                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                title="Add reaction"
+                              >
+                                <FaSmile className="text-sm" />
+                              </button>
+                            )}
+                            {!msg.isDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedInfoMsg(msg)}
+                                className="p-1.5 text-base-content/60 hover:text-info hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                title="Message Info"
+                              >
+                                <FaInfoCircle className="text-xs" />
+                              </button>
+                            )}
                             {!msg.isDeleted && (
                               <button
                                 type="button"
@@ -1003,25 +1133,45 @@ export const MessagesPage = () => {
                                   setEditingMessage(null);
                                   messageInputRef.current?.focus();
                                 }}
-                                className="p-1 text-base-content/40 hover:text-primary rounded-full transition"
+                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
                                 title="Reply to message"
                               >
-                                <FaReply className="text-[10px]" />
+                                <FaReply className="text-xs" />
                               </button>
                             )}
                             {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1 text-base-content/40 hover:text-error rounded-full transition"
+                                className="p-1.5 text-base-content/60 hover:text-error hover:bg-base-200/80 rounded-full transition cursor-pointer"
                                 title="Delete message"
                               >
-                                <FaTrashAlt className="text-[10px]" />
+                                <FaTrashAlt className="text-xs" />
                               </button>
                             )}
                           </div>
                         )}
                       </div>
+
+                      {/* Reaction Picker Popup */}
+                      <div className={`relative ${isMe ? "self-end" : "self-start"}`}>
+                        <MessageReactionPicker
+                          isOpen={reactionPickerMsgId === msg.id}
+                          onClose={() => setReactionPickerMsgId(null)}
+                          onSelectEmoji={(emoji) => handleToggleReaction(msg.id, emoji)}
+                          position="top"
+                          align={isMe ? "end" : "start"}
+                        />
+                      </div>
+
+                      {/* Reaction Badges */}
+                      <MessageReactionBadges
+                        reactions={msg.reactions}
+                        currentUserId={currentUserId}
+                        onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji)}
+                        onOpenPicker={() => setReactionPickerMsgId(msg.id)}
+                        align={isMe ? "end" : "start"}
+                      />
                     </div>
                   </React.Fragment>
                 );
@@ -1189,6 +1339,11 @@ export const MessagesPage = () => {
         isOpen={showBroadcastModal}
         onClose={() => setShowBroadcastModal(false)}
         onBroadcastSent={() => loadConversations()}
+      />
+      <MessageInfoModal
+        isOpen={!!selectedInfoMsg}
+        onClose={() => setSelectedInfoMsg(null)}
+        message={selectedInfoMsg}
       />
     </div>
   );

@@ -89,16 +89,32 @@ export const useChatSocket = (activeConversationId = null) => {
       );
     };
 
+    const handleMessageReaction = (payload) => {
+      window.dispatchEvent(
+        new CustomEvent("hms:chat-message-reaction", { detail: payload })
+      );
+    };
+
+    const handleMessagesRead = (payload) => {
+      window.dispatchEvent(
+        new CustomEvent("hms:chat-messages-read", { detail: payload })
+      );
+    };
+
     socket.on("chat:new_message", handleNewMessage);
     socket.on("chat:message", handleNewMessage);
     socket.on("chat:message_edited", handleMessageEdited);
     socket.on("chat:message_deleted", handleMessageDeleted);
+    socket.on("chat:message_reaction", handleMessageReaction);
+    socket.on("chat:messages_read", handleMessagesRead);
 
     return () => {
       socket.off("chat:new_message", handleNewMessage);
       socket.off("chat:message", handleNewMessage);
       socket.off("chat:message_edited", handleMessageEdited);
       socket.off("chat:message_deleted", handleMessageDeleted);
+      socket.off("chat:message_reaction", handleMessageReaction);
+      socket.off("chat:messages_read", handleMessagesRead);
     };
   }, [isAuthenticated, user, refreshUnreadCount]);
 

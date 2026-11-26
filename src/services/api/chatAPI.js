@@ -63,6 +63,16 @@ export const chatAPI = {
     return res.data;
   },
 
+  toggleReaction: async (messageId, emoji) => {
+    const res = await apiClient.post(`/chat/messages/${messageId}/react`, { emoji });
+    return res.data;
+  },
+
+  getMessageInfo: async (messageId) => {
+    const res = await apiClient.get(`/chat/messages/${messageId}/info`);
+    return res.data;
+  },
+
   searchMessages: async (conversationId, query) => {
     const res = await apiClient.get(`/chat/conversations/${conversationId}/messages/search`, {
       params: { q: query },
