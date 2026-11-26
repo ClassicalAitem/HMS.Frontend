@@ -31,9 +31,12 @@ export const MessageReactionPicker = ({
   return (
     <div
       ref={pickerRef}
-      className={`absolute z-30 flex items-center gap-1.5 p-1.5 bg-base-100 rounded-full shadow-2xl border border-base-300 animate-in fade-in zoom-in-95 duration-100 max-w-[calc(100vw-2rem)] select-none ${
+      className={`absolute z-50 flex items-center gap-2 p-2 bg-base-100 rounded-full shadow-2xl border border-base-300 animate-in fade-in zoom-in-95 duration-150 max-w-[calc(100vw-2.5rem)] select-none ${
         position === "top" ? "bottom-full mb-2" : "top-full mt-2"
       } ${align === "end" ? "right-0" : "left-0"}`}
+      style={{
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15)",
+      }}
     >
       {QUICK_EMOJIS.map((emoji) => (
         <button
@@ -44,7 +47,7 @@ export const MessageReactionPicker = ({
             onSelectEmoji(emoji);
             onClose();
           }}
-          className="w-9 h-9 flex items-center justify-center text-xl rounded-full hover:bg-base-200 hover:scale-125 active:scale-110 transition cursor-pointer"
+          className="w-11 h-11 flex items-center justify-center text-2xl rounded-full hover:bg-base-200 hover:scale-125 active:scale-110 transition cursor-pointer shrink-0"
         >
           {emoji}
         </button>
@@ -65,9 +68,18 @@ export const MessageReactionBadges = ({
 }) => {
   if (!Array.isArray(reactions) || reactions.length === 0) return null;
 
-  // Group reactions by emoji
-  const grouped = {};
+  // Strict one reaction per user deduplication: if a user reacted multiple times, only their latest reaction counts
+  const userLatestMap = new Map();
   reactions.forEach((r) => {
+    if (!r || !r.emoji) return;
+    const uid = r.userId || r.userName || "anonymous";
+    userLatestMap.set(uid, r);
+  });
+  const uniqueReactions = Array.from(userLatestMap.values());
+
+  // Group deduplicated reactions by emoji
+  const grouped = {};
+  uniqueReactions.forEach((r) => {
     if (!r.emoji) return;
     if (!grouped[r.emoji]) {
       grouped[r.emoji] = {
@@ -104,14 +116,14 @@ export const MessageReactionBadges = ({
               onToggleReaction(group.emoji);
             }}
             title={tooltip}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer select-none shadow-2xs hover:scale-105 active:scale-95 ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer select-none shadow-sm hover:scale-105 active:scale-95 ${
               group.hasReacted
-                ? "bg-primary/20 border-primary/50 text-primary font-bold ring-1 ring-primary/30"
-                : "bg-base-200/90 border-base-300 text-base-content/85 hover:bg-base-300"
+                ? "bg-primary/20 border-primary/60 text-primary ring-1 ring-primary/40 shadow-xs"
+                : "bg-base-200/90 border-base-300 text-base-content hover:bg-base-300"
             }`}
           >
-            <span className="text-base leading-none">{group.emoji}</span>
-            <span className="text-xs leading-none font-bold">{group.count}</span>
+            <span className="text-xl leading-none">{group.emoji}</span>
+            <span className="text-xs leading-none font-black">{group.count}</span>
           </button>
         );
       })}
@@ -122,10 +134,10 @@ export const MessageReactionBadges = ({
             e.stopPropagation();
             onOpenPicker();
           }}
-          className="w-7 h-7 flex items-center justify-center text-base-content/50 hover:text-primary hover:bg-base-200/80 rounded-full border border-base-300/60 transition cursor-pointer shadow-2xs"
+          className="w-8 h-8 flex items-center justify-center text-base-content/60 hover:text-primary hover:bg-base-200/90 rounded-full border border-base-300 transition cursor-pointer shadow-xs"
           title="Add reaction"
         >
-          <FaPlus className="text-[10px]" />
+          <FaPlus className="text-xs" />
         </button>
       )}
     </div>

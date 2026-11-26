@@ -919,47 +919,47 @@ export const MessagesPage = () => {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1 max-w-[75%]">
+                      <div className="flex items-center gap-1.5 max-w-[85%] sm:max-w-[75%] relative">
                         {isMe && (
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-xs border border-base-300/80 shadow-xs px-1.5 py-0.5 rounded-full">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
                             {!msg.isDeleted && (
                               <button
                                 type="button"
                                 onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
-                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Add reaction"
                               >
-                                <FaSmile className="text-sm" />
+                                <FaSmile className="text-base" />
                               </button>
                             )}
                             {canEdit && (
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(msg)}
-                                className="p-1.5 text-base-content/60 hover:text-warning hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-warning hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Edit message"
                               >
-                                <FaPencilAlt className="text-xs" />
+                                <FaPencilAlt className="text-sm" />
                               </button>
                             )}
                             {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1.5 text-base-content/60 hover:text-error hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Delete message"
                               >
-                                <FaTrashAlt className="text-xs" />
+                                <FaTrashAlt className="text-sm" />
                               </button>
                             )}
                             {!msg.isDeleted && (
                               <button
                                 type="button"
                                 onClick={() => setSelectedInfoMsg(msg)}
-                                className="p-1.5 text-base-content/60 hover:text-info hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Message Info"
                               >
-                                <FaInfoCircle className="text-xs" />
+                                <FaInfoCircle className="text-sm" />
                               </button>
                             )}
                             {!msg.isDeleted && (
@@ -974,10 +974,10 @@ export const MessagesPage = () => {
                                   setEditingMessage(null);
                                   messageInputRef.current?.focus();
                                 }}
-                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Reply to message"
                               >
-                                <FaReply className="text-xs" />
+                                <FaReply className="text-sm" />
                               </button>
                             )}
                           </div>
@@ -1100,25 +1100,25 @@ export const MessagesPage = () => {
                         })()}
 
                         {!isMe && (
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-xs border border-base-300/80 shadow-xs px-1.5 py-0.5 rounded-full">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
                             {!msg.isDeleted && (
                               <button
                                 type="button"
                                 onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
-                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Add reaction"
                               >
-                                <FaSmile className="text-sm" />
+                                <FaSmile className="text-base" />
                               </button>
                             )}
                             {!msg.isDeleted && (
                               <button
                                 type="button"
                                 onClick={() => setSelectedInfoMsg(msg)}
-                                className="p-1.5 text-base-content/60 hover:text-info hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Message Info"
                               >
-                                <FaInfoCircle className="text-xs" />
+                                <FaInfoCircle className="text-sm" />
                               </button>
                             )}
                             {!msg.isDeleted && (
@@ -1133,20 +1133,20 @@ export const MessagesPage = () => {
                                   setEditingMessage(null);
                                   messageInputRef.current?.focus();
                                 }}
-                                className="p-1.5 text-base-content/60 hover:text-primary hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Reply to message"
                               >
-                                <FaReply className="text-xs" />
+                                <FaReply className="text-sm" />
                               </button>
                             )}
                             {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1.5 text-base-content/60 hover:text-error hover:bg-base-200/80 rounded-full transition cursor-pointer"
+                                className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
                                 title="Delete message"
                               >
-                                <FaTrashAlt className="text-xs" />
+                                <FaTrashAlt className="text-sm" />
                               </button>
                             )}
                           </div>
@@ -1154,14 +1154,16 @@ export const MessagesPage = () => {
                       </div>
 
                       {/* Reaction Picker Popup */}
-                      <div className={`relative ${isMe ? "self-end" : "self-start"}`}>
-                        <MessageReactionPicker
-                          isOpen={reactionPickerMsgId === msg.id}
-                          onClose={() => setReactionPickerMsgId(null)}
-                          onSelectEmoji={(emoji) => handleToggleReaction(msg.id, emoji)}
-                          position="top"
-                          align={isMe ? "end" : "start"}
-                        />
+                      <div className={`relative w-full flex ${isMe ? "justify-end" : "justify-start"}`}>
+                        <div className="relative">
+                          <MessageReactionPicker
+                            isOpen={reactionPickerMsgId === msg.id}
+                            onClose={() => setReactionPickerMsgId(null)}
+                            onSelectEmoji={(emoji) => handleToggleReaction(msg.id, emoji)}
+                            position="top"
+                            align={isMe ? "end" : "start"}
+                          />
+                        </div>
                       </div>
 
                       {/* Reaction Badges */}
