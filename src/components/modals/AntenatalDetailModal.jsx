@@ -105,7 +105,7 @@ const AntenatalDetailModal = ({
           recordId ? getPrescriptionsByAntenatalId(recordId) : Promise.resolve([]),
           recordId ? getInvestigationsByAntenatalId(recordId) : Promise.resolve([]),
           initialPatientId ? getLabResults({ patientId: initialPatientId }) : Promise.resolve([]),
-          initialPatientId ? apiClient.get('/hmo', { params: { patientId: initialPatientId } }) : Promise.resolve(null),
+          initialPatientId ? apiClient.get('/hmo', { params: { patientId: initialPatientId }, skipErrorToast: true }) : Promise.resolve(null),
           initialPatientId ? getAllBillings({ patientId: initialPatientId }) : Promise.resolve(null),
           initialPatientId && !propPatient ? getPatientById(initialPatientId) : Promise.resolve(null),
         ]);
