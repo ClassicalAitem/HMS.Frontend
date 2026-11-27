@@ -324,15 +324,20 @@ const WardRoundTab = ({
     setShowDischargeConfirm(false)
     try {
     
+      const resolvedWardId =
+        typeof admission?.wardId === 'object'
+          ? admission.wardId?._id || admission.wardId?.id
+          : admission?.wardId
+
       // Step 1: Create the Ward Round note
       const roundPayload = {
-        patientId,
+        ...(patientId ? { patientId } : {}),
         ...(dependantId ? { dependantId } : {}),
-        consultationId: effectiveConsultationId,
-        admissionId: admissionId || undefined,
-        wardId: admission?.wardId || undefined,
-        note: form.note.trim() ,
-        dischargeNote: form.dischargeNote ? form.dischargeNote.trim() : undefined,
+        ...(effectiveConsultationId ? { consultationId: effectiveConsultationId } : {}),
+        ...(admissionId ? { admissionId } : {}),
+        ...(resolvedWardId ? { wardId: resolvedWardId } : {}),
+        note: form.note.trim(),
+        ...(form.dischargeNote?.trim() ? { dischargeNote: form.dischargeNote.trim() } : {}),
         isDischargeRound: Boolean(form.isDischargeRound),
       }
 
