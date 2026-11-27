@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { config } from '../../config/env';
 import { showErrorToast } from '../../utils/errorHandler';
 import { recordFailedRequest } from '../../utils/diagnostics';
@@ -55,6 +56,30 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let isRedirectingToLogin = false;
+
+const handleExpiredSession = () => {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('persist:root');
+  } catch {}
+
+  if (!isRedirectingToLogin) {
+    isRedirectingToLogin = true;
+    toast.error('Your session has expired. Please log in again.', { id: 'session-expired' });
+    if (window.location.pathname !== '/login') {
+      setTimeout(() => {
+        window.location.replace('/login');
+      }, 300);
+    } else {
+      isRedirectingToLogin = false;
+    }
+  }
+};
+
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
@@ -84,7 +109,7 @@ apiClient.interceptors.response.use(
                           errorMessage.includes('no token provided');
 
       if (isJwtExpired) {
-        // Auto-logout removed as requested
+        handleExpiredSession();
         return Promise.reject(new Error('Session expired.'));
       }
 
@@ -109,7 +134,7 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
-          // Refresh failed, auto-logout removed as requested
+          handleExpiredSession();
           return Promise.reject(refreshError);
         }
       }

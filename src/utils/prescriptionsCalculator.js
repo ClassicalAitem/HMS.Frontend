@@ -514,6 +514,31 @@ export function calculatePrescriptionLine({
 }
 
 /**
+ * Converts a per-dispense-unit price back to the inventory item's `sellingPrice`
+ * (pack/container price) so pharmacist price edits can sync back to inventory.
+ */
+export function computeInventorySellingPriceFromUnitPrice(med, inventory, unitPrice) {
+  const price = Number(unitPrice);
+  if (!inventory || !Number.isFinite(price) || price < 0) return null;
+
+  if (isSingleUnitDispense(med?.medicationType, inventory)) {
+    return price;
+  }
+
+  const medType = String(med?.medicationType || '').toLowerCase();
+  if (medType === 'injection' || medType === 'subcutaneous') {
+    if (isExemptInjection(inventory)) {
+      const containerCapacity = getInjectionCapacity(inventory);
+      return containerCapacity > 0 ? price * containerCapacity : price;
+    }
+    return price;
+  }
+
+  const packSize = Number(inventory.packSize) || 1;
+  return packSize > 1 ? price * packSize : price;
+}
+
+/**
  * Parses freeform or delimited prescription string into structured components.
  * Example: "Vitamin C, 100 mg, tds, (after meal)"
  * Output: { drugName: 'Vitamin C', dosage: '100 mg', frequency: 'tds', duration: '', instructions: 'after meal' }

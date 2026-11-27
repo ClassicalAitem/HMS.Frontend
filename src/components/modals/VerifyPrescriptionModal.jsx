@@ -236,8 +236,8 @@ const VerifyPrescriptionModal = ({
                       min="1"
                       step="1"
                       className="input input-bordered input-sm w-full font-semibold"
-                      value={r.billedQuantity}
-                      onChange={(e) => updateRow(idx, { billedQuantity: Number(e.target.value) || 1 })}
+                      value={r.billedQuantity ?? ''}
+                      onChange={(e) => updateRow(idx, { billedQuantity: e.target.value })}
                       disabled={isUnavailable}
                     />
                   </div>
@@ -248,8 +248,8 @@ const VerifyPrescriptionModal = ({
                       min="0"
                       step="any"
                       className="input input-bordered input-sm w-full font-semibold text-primary"
-                      value={isUnavailable ? 0 : r.unitPrice}
-                      onChange={(e) => updateRow(idx, { unitPrice: Number(e.target.value) || 0 })}
+                      value={isUnavailable ? 0 : (r.unitPrice ?? '')}
+                      onChange={(e) => updateRow(idx, { unitPrice: e.target.value })}
                       disabled={isUnavailable}
                     />
                   </div>

@@ -38,6 +38,8 @@ const addUserSchema = yup.object({
       'front-desk',
       'frontdesk',
       'cashier',
+      'accountant',
+      'account-officer',
       'pharmacist',
       'medical-laboratory',
       'lab-technician',
@@ -141,8 +143,8 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-      <div className="mx-4 w-full max-w-md shadow-xl 2xl:max-w-lg card bg-base-100">
+    <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+      <div className="w-full max-w-md 2xl:max-w-lg max-h-[90vh] overflow-y-auto shadow-xl card bg-base-100">
         <div className="p-6 card-body">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
@@ -255,6 +257,8 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 <option value="nurse">Nurse</option>
                 <option value="front-desk">Front Desk</option>
                 <option value="cashier">Cashier</option>
+                <option value="accountant">Accountant</option>
+                <option value="account-officer">Account Officer</option>
                 <option value="pharmacist">Pharmacist</option>
                 <option value="medical-laboratory">Medical Laboratory</option>
                 <option value="hmo">HMO</option>

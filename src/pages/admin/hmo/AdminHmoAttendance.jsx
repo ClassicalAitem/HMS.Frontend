@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -410,7 +411,7 @@ const AdminHmoAttendance = () => {
               HMO Patients & Review History
             </h1>
             <p className="text-sm text-base-content/70 mt-0.5">
-              Comprehensive oversight of patients reviewed by HMO officers, approvals, preauthorization codes, coverage amounts, and patient copays.
+              Oversight of patients reviewed by HMO officers, approvals, and preauthorization codes.
             </p>
           </div>
 
@@ -435,25 +436,11 @@ const AdminHmoAttendance = () => {
         </div>
 
         {/* Counter KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl bg-base-100 border border-base-200 shadow-sm">
             <p className="text-xs font-bold text-base-content/60 uppercase">Reviewed Patients</p>
             <p className="text-2xl font-extrabold text-primary mt-1">{reviewedRecords.length}</p>
-            <p className="text-[11px] text-base-content/50 mt-0.5">Bills evaluated by HMO</p>
-          </div>
-          <div className="p-4 rounded-xl bg-base-100 border border-base-200 shadow-sm">
-            <p className="text-xs font-bold text-base-content/60 uppercase">HMO Covered Amount</p>
-            <p className="text-xl sm:text-2xl font-extrabold text-success mt-1">
-              {formatCurrency(totalReviewedCovered)}
-            </p>
-            <p className="text-[11px] text-success/70 mt-0.5">Total approved claims</p>
-          </div>
-          <div className="p-4 rounded-xl bg-base-100 border border-base-200 shadow-sm">
-            <p className="text-xs font-bold text-base-content/60 uppercase">Patient Copay (Owed)</p>
-            <p className="text-xl sm:text-2xl font-extrabold text-warning mt-1">
-              {formatCurrency(totalPatientCopay)}
-            </p>
-            <p className="text-[11px] text-warning/70 mt-0.5">Out-of-pocket balance</p>
+            <p className="text-[11px] text-base-content/50 mt-0.5">Visits evaluated by HMO</p>
           </div>
           <div className="p-4 rounded-xl bg-base-100 border border-base-200 shadow-sm">
             <p className="text-xs font-bold text-base-content/60 uppercase">Active HMO Providers</p>
@@ -490,9 +477,9 @@ const AdminHmoAttendance = () => {
 
         {/* Filters Bar */}
         <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3 bg-base-100 p-4 rounded-xl border border-base-200">
-            <div className="flex-1 relative">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 w-4 h-4" />
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm">
+            <div className="flex-1 relative flex items-center">
+              <FaSearch className="absolute left-3.5 text-base-content/40 w-3.5 h-3.5 pointer-events-none" />
               <input
                 type="text"
                 placeholder={
@@ -502,23 +489,24 @@ const AdminHmoAttendance = () => {
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input input-sm w-full pl-10 bg-base-200/50 border-base-300 rounded-lg text-xs"
+                className="input input-sm input-bordered w-full pl-9 pr-8 bg-base-100 rounded-xl text-xs"
               />
               {searchTerm && (
                 <button
+                  type="button"
                   onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+                  className="absolute right-3 text-xs text-base-content/40 hover:text-base-content"
                 >
                   ✕
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <select
                 value={providerFilter}
                 onChange={(e) => setProviderFilter(e.target.value)}
-                className="select select-sm bg-base-200/50 border-base-300 rounded-lg text-xs"
+                className="select select-sm select-bordered w-auto min-w-[155px] bg-base-100 rounded-xl text-xs"
               >
                 <option value="all">All HMO Providers</option>
                 {uniqueProvidersList.map((prov) => (
@@ -533,7 +521,7 @@ const AdminHmoAttendance = () => {
                   <select
                     value={decisionFilter}
                     onChange={(e) => setDecisionFilter(e.target.value)}
-                    className="select select-sm bg-base-200/50 border-base-300 rounded-lg text-xs"
+                    className="select select-sm select-bordered w-auto min-w-[135px] bg-base-100 rounded-xl text-xs"
                   >
                     <option value="all">All Decisions</option>
                     <option value="approved">Approved</option>
@@ -551,7 +539,7 @@ const AdminHmoAttendance = () => {
                         setCustomTo("");
                       }
                     }}
-                    className="select select-sm bg-base-200/50 border-base-300 rounded-lg text-xs"
+                    className="select select-sm select-bordered w-auto min-w-[135px] bg-base-100 rounded-xl text-xs"
                   >
                     <option value="all">All Dates</option>
                     <option value="today">Today</option>
@@ -611,7 +599,7 @@ const AdminHmoAttendance = () => {
             </div>
           ) : activeTab === "reviewed" ? (
             /* EXACT HMO REVIEWED TABLE */
-            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+            <div className="overflow-x-auto">
               <table className="table table-zebra w-full text-left text-xs">
                 <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
                   <tr>
@@ -621,9 +609,6 @@ const AdminHmoAttendance = () => {
                     <th className="px-4">HMO Status</th>
                     <th className="px-4">Claims Status</th>
                     <th className="px-4">HMO Provider</th>
-                    <th className="px-4 text-right">Total Bill</th>
-                    <th className="px-4 text-right">HMO Covered</th>
-                    <th className="px-4 text-right">Patient Owes</th>
                     <th className="px-4">Reviewed Date</th>
                     <th className="px-4 text-center">Action</th>
                   </tr>
@@ -631,7 +616,7 @@ const AdminHmoAttendance = () => {
                 <tbody className="divide-y divide-base-200">
                   {paginatedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-base-content/50">
+                      <td colSpan={8} className="py-12 text-center text-base-content/50">
                         No HMO reviewed patient records found matching your filters.
                       </td>
                     </tr>
@@ -641,7 +626,20 @@ const AdminHmoAttendance = () => {
                         <td className="px-4 py-3 font-semibold text-primary font-mono">{row.displayId}</td>
                         <td className="px-4 py-3 font-medium text-base-content">
                           <div>
-                            <span className="font-semibold">{row.name}</span>
+                            {row.patientId ? (
+                              <Link
+                                to={
+                                  row.type === "dependant" && row.dependantId
+                                    ? `/dashboard/admin/patients/${row.patientId}?dependantId=${row.dependantId}`
+                                    : `/dashboard/admin/patients/${row.patientId}`
+                                }
+                                className="font-semibold text-primary hover:underline"
+                              >
+                                {row.name}
+                              </Link>
+                            ) : (
+                              <span className="font-semibold">{row.name}</span>
+                            )}
                             {row.phone && row.phone !== "—" && (
                               <p className="text-[11px] text-base-content/50 font-normal">{row.phone}</p>
                             )}
@@ -673,15 +671,6 @@ const AdminHmoAttendance = () => {
                         <td className="px-4 py-3 font-medium text-base-content/80 max-w-[150px] truncate">
                           {row.hmoProvider}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-base-content">
-                          {formatCurrency(row.totalAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-success">
-                          {formatCurrency(row.hmoCovered)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-warning">
-                          {formatCurrency(row.patientOwes)}
-                        </td>
                         <td className="px-4 py-3 text-base-content/70 whitespace-nowrap">
                           {row.approvedAt ? formatNigeriaDateTime(row.approvedAt) : "—"}
                         </td>
@@ -702,7 +691,7 @@ const AdminHmoAttendance = () => {
             </div>
           ) : (
             /* ALL HMO ENROLLEES TABLE */
-            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+            <div className="overflow-x-auto">
               <table className="table table-zebra w-full text-left text-xs">
                 <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
                   <tr>
@@ -812,32 +801,13 @@ const AdminHmoAttendance = () => {
 
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-4">
-              {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-3 bg-base-200/50 p-3.5 rounded-xl border border-base-200 text-xs">
-                <div>
-                  <span className="text-base-content/60">Total Bill:</span>
-                  <p className="text-base font-bold text-base-content">{formatCurrency(selectedRecord.totalAmount)}</p>
-                </div>
-                <div>
-                  <span className="text-base-content/60">HMO Approved Coverage:</span>
-                  <p className="text-base font-bold text-success">{formatCurrency(selectedRecord.hmoCovered)}</p>
-                </div>
-                <div>
-                  <span className="text-base-content/60">Patient Copay Owed:</span>
-                  <p className="text-base font-bold text-warning">{formatCurrency(selectedRecord.patientOwes)}</p>
-                </div>
-              </div>
-
               {/* Line Items Table */}
               <div className="border border-base-200 rounded-xl overflow-hidden">
                 <table className="table table-zebra w-full text-xs">
                   <thead className="bg-base-200 text-xs uppercase font-bold text-base-content/80">
                     <tr>
                       <th className="py-2.5 px-3">Service / Item</th>
-                      <th className="px-3 text-right">Price</th>
                       <th className="px-3">HMO Decision</th>
-                      <th className="px-3 text-right">HMO Covered</th>
-                      <th className="px-3 text-right">Patient Owes</th>
                       <th className="px-3">Pre-Auth / Notes</th>
                     </tr>
                   </thead>
@@ -848,17 +818,8 @@ const AdminHmoAttendance = () => {
                           {item.name || item.serviceName || item.description || item.code || "Medical Item"}
                           {item.code && <span className="block text-[10px] text-base-content/50 font-mono">{item.code}</span>}
                         </td>
-                        <td className="px-3 py-2 text-right">
-                          {formatCurrency(item.total || item.price || item.unitPrice || 0)}
-                        </td>
                         <td className="px-3 py-2">
                           <DecisionBadge decision={item.hmoStatus || "pending"} />
-                        </td>
-                        <td className="px-3 py-2 text-right font-bold text-success">
-                          {formatCurrency(item.hmoCovered || 0)}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-warning">
-                          {formatCurrency(item.patientOwes || 0)}
                         </td>
                         <td className="px-3 py-2">
                           {item.preAuthCode || item.preauthCode ? (

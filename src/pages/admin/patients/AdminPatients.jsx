@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -112,6 +112,8 @@ const AdminPatients = () => {
       const isHmo = Boolean(p.hmo?.provider || p.cardType?.toLowerCase().includes("hmo"));
       list.push({
         id: p._id || p.id || `p-${idx}`,
+        patientId: p._id || p.id,
+        dependantId: null,
         hospitalId: p.hospitalId || "—",
         name: [p.firstName, p.lastName].filter(Boolean).join(" ").trim() || p.fullName || "—",
         type: "Principal Patient",
@@ -129,6 +131,8 @@ const AdminPatients = () => {
       const isHmo = Boolean(d.hmo?.provider || d.cardType?.toLowerCase().includes("hmo"));
       list.push({
         id: d._id || d.id || `d-${idx}`,
+        patientId: d.patientId || d.patient?.id || d.patient?._id,
+        dependantId: d._id || d.id,
         hospitalId: d.hospitalId || d.patient?.hospitalId || "Dependant",
         name: [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || d.fullName || "—",
         type: `Dependant (${d.relationship || "Family"})`,
@@ -197,13 +201,13 @@ const AdminPatients = () => {
               <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-primary/10 text-primary">
                 Patient Registry
               </span>
-              <span className="text-xs text-base-content/60">Card Opening Oversight</span>
+              <span className="text-xs text-base-content/60">Registered Patients</span>
             </div>
             <h1 className="text-2xl font-bold text-base-content mt-1">
-              Card Opening & Registered Patients
+              Registered Patients
             </h1>
             <p className="text-sm text-base-content/70 mt-0.5">
-              Oversight of all opened patient cards, hospital IDs, dependants, and medical billing schemes.
+              Oversight of all registered patients, hospital IDs, dependants, and card schemes.
             </p>
           </div>
 
@@ -310,7 +314,22 @@ const AdminPatients = () => {
                     paginatedRows.map((r, idx) => (
                       <tr key={r.id || idx} className="hover:bg-base-200/40">
                         <td className="px-4 py-3 font-semibold text-primary">{r.hospitalId}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">{r.name}</td>
+                        <td className="px-4 py-3 font-medium text-base-content">
+                          {r.patientId ? (
+                            <Link
+                              to={
+                                r.dependantId
+                                  ? `/dashboard/admin/patients/${r.patientId}?dependantId=${r.dependantId}`
+                                  : `/dashboard/admin/patients/${r.patientId}`
+                              }
+                              className="text-primary hover:underline font-semibold"
+                            >
+                              {r.name}
+                            </Link>
+                          ) : (
+                            r.name
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-xs text-base-content/70">{r.type}</td>
                         <td className="px-4 py-3 capitalize text-base-content/80">{r.gender}</td>
                         <td className="px-4 py-3 text-base-content/80">{r.age}</td>

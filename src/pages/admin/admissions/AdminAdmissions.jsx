@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -86,6 +87,8 @@ const AdminAdmissions = () => {
 
         return {
           id: adm._id || adm.id || `adm-${idx}`,
+          patientId: adm.patientId || adm.patient?.id || adm.patient?._id || adm.dependant?.patientId,
+          dependantId: adm.dependantId || adm.dependant?.id || adm.dependant?._id || null,
           hospitalId: hospId,
           patientName:
             [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() ||
@@ -270,7 +273,22 @@ const AdminAdmissions = () => {
                     paginatedRows.map((adm, idx) => (
                       <tr key={adm.id || idx} className="hover:bg-base-200/40">
                         <td className="px-4 py-3 font-semibold text-warning">{adm.hospitalId}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">{adm.patientName}</td>
+                        <td className="px-4 py-3 font-medium text-base-content">
+                          {adm.patientId ? (
+                            <Link
+                              to={
+                                adm.dependantId
+                                  ? `/dashboard/admin/patients/${adm.patientId}?dependantId=${adm.dependantId}`
+                                  : `/dashboard/admin/patients/${adm.patientId}`
+                              }
+                              className="text-primary hover:underline font-semibold"
+                            >
+                              {adm.patientName}
+                            </Link>
+                          ) : (
+                            adm.patientName
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-base-content/80">{adm.wardName}</td>
                         <td className="px-4 py-3 text-base-content/80 font-mono text-xs">{adm.bedNumber}</td>
                         <td className="px-4 py-3 text-base-content/80">{adm.doctorName}</td>

@@ -162,7 +162,7 @@ const AdminReports = () => {
 
   const quickStats = [
     {
-      label: "Total Card Registrations",
+      label: "Registered Patients",
       value: totalCardsOpened,
       sub: `${dataStore.patients.length} primary, ${dataStore.dependants.length} dependants`,
       icon: FaUsers,
@@ -193,7 +193,7 @@ const AdminReports = () => {
 
   const categories = [
     { id: "all", label: "All Modules" },
-    { id: "registrations", label: "Card Opening & OPD" },
+    { id: "registrations", label: "Registered Patients & OPD" },
     { id: "clinical", label: "Inpatients & Surgeries" },
     { id: "diagnostics", label: "Diagnostics & Scans" },
     { id: "maternity", label: "Maternity & Neonatal" },
@@ -204,13 +204,13 @@ const AdminReports = () => {
     {
       id: "card-opening",
       category: "registrations",
-      title: "Card Opening & Patient Registry",
+      title: "Registered Patients",
       badge: "Patient Registration",
       badgeColor: "badge-primary",
       icon: FaUsers,
       iconColor: "text-primary bg-primary/10",
       description: "Supervise all registered hospital cards, family dependants, primary phone contacts, blood groups, and card types.",
-      countLabel: `${totalCardsOpened} Total Cards Opened`,
+      countLabel: `${totalCardsOpened} Registered Patients`,
       path: "/dashboard/admin/patients",
     },
     {

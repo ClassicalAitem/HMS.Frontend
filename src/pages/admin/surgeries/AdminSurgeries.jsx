@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -69,6 +70,8 @@ const AdminSurgeries = () => {
 
         return {
           id: surg._id || surg.id || `surg-${idx}`,
+          patientId: surg.patientId || patient.id || patient._id,
+          dependantId: surg.dependantId || null,
           procedureName: surg.surgeryName || surg.procedure || surg.title || "Surgical Procedure",
           patientName:
             [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() ||
@@ -226,7 +229,22 @@ const AdminSurgeries = () => {
                     paginatedRows.map((surg, idx) => (
                       <tr key={surg.id || idx} className="hover:bg-base-200/40">
                         <td className="px-4 py-3 font-semibold text-base-content">{surg.procedureName}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">{surg.patientName}</td>
+                        <td className="px-4 py-3 font-medium text-base-content">
+                          {surg.patientId ? (
+                            <Link
+                              to={
+                                surg.dependantId
+                                  ? `/dashboard/admin/patients/${surg.patientId}?dependantId=${surg.dependantId}`
+                                  : `/dashboard/admin/patients/${surg.patientId}`
+                              }
+                              className="text-primary hover:underline font-semibold"
+                            >
+                              {surg.patientName}
+                            </Link>
+                          ) : (
+                            surg.patientName
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-mono text-xs text-primary">{surg.hospitalId}</td>
                         <td className="px-4 py-3 text-base-content/80">{surg.surgeonName}</td>
                         <td className="px-4 py-3 text-base-content/80">{surg.theatre}</td>

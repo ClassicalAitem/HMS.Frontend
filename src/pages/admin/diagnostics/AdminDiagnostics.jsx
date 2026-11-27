@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -72,6 +73,8 @@ const AdminDiagnostics = () => {
 
       return {
         id: item._id || item.id || `diag-${idx}`,
+        patientId: item.patientId || item.patient?.id || item.patient?._id || item.dependant?.patientId,
+        dependantId: item.dependantId || item.dependant?.id || item.dependant?._id || null,
         category: isSono ? "Sonography / Scan" : "Laboratory Pathology",
         testName: testName,
         patientName:
@@ -240,17 +243,13 @@ const AdminDiagnostics = () => {
               <KolakLoader text="Loading diagnostics data..." />
             </div>
           ) : (
-            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+            <div className="overflow-x-auto">
               <table className="table table-zebra w-full text-left">
-                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
+                <thead className="bg-base-200/90 text-xs font-bold text-base-content uppercase border-b border-base-200">
                   <tr>
                     <th className="py-3.5 px-4">Category</th>
                     <th className="px-4">Test / Scan Name</th>
                     <th className="px-4">Patient Name</th>
-                    <th className="px-4">Hospital ID</th>
-                    <th className="px-4">Scientist / Sonographer</th>
-                    <th className="px-4">Result Flag</th>
-                    <th className="px-4">Imagery / Files</th>
                     <th className="px-4">Date</th>
                     <th className="px-4">Status</th>
                   </tr>
@@ -258,7 +257,7 @@ const AdminDiagnostics = () => {
                 <tbody className="divide-y divide-base-200 text-sm">
                   {paginatedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-base-content/50">
+                      <td colSpan={5} className="py-12 text-center text-base-content/50">
                         No diagnostic records found.
                       </td>
                     </tr>
@@ -277,21 +276,22 @@ const AdminDiagnostics = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3 font-semibold text-base-content">{diag.testName}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">{diag.patientName}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-primary">{diag.hospitalId}</td>
-                        <td className="px-4 py-3 text-base-content/80">{diag.clinician}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                              diag.flag === "C" || diag.flag === "H"
-                                ? "bg-error/10 text-error"
-                                : "bg-success/10 text-success"
-                            }`}
-                          >
-                            {diag.flag}
-                          </span>
+                        <td className="px-4 py-3 font-medium text-base-content">
+                          {diag.patientId ? (
+                            <Link
+                              to={
+                                diag.dependantId
+                                  ? `/dashboard/admin/patients/${diag.patientId}?dependantId=${diag.dependantId}`
+                                  : `/dashboard/admin/patients/${diag.patientId}`
+                              }
+                              className="text-primary hover:underline font-semibold"
+                            >
+                              {diag.patientName}
+                            </Link>
+                          ) : (
+                            diag.patientName
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-base-content/70">{diag.attachments}</td>
                         <td className="px-4 py-3 text-base-content/70 whitespace-nowrap">
                           {diag.date ? formatNigeriaDate(diag.date) : "—"}
                         </td>

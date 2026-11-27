@@ -78,6 +78,12 @@ const HOSPITAL_ROLES_PERMISSIONS = [
     permissions: ['BILLING_INVOICE', 'RECEIPT_GENERATION', 'PAYMENT_COLLECTION'],
   },
   {
+    role: 'accountant',
+    name: 'Accountant',
+    description: 'Oversee all hospital revenue streams, expenses, cashbook ledger, and inventory valuation',
+    permissions: ['ACCOUNTANT_DASHBOARD', 'REVENUE_STREAMS', 'EXPENSES_MANAGEMENT', 'INVENTORY_BALANCE'],
+  },
+  {
     role: 'receptionist',
     name: 'Reception & Front Desk',
     description: 'Patient biometric registration, appointment bookings, queue dispatch',

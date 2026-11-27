@@ -32,6 +32,8 @@ const editUserSchema = yup.object({
       'frontdesk',
       'front-desk',
       'cashier',
+      'accountant',
+      'account-officer',
       'pharmacist',
       'medical-laboratory',
       'lab-technician',
@@ -161,8 +163,8 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
   if (!isOpen || !user) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-      <div className="mx-4 w-full max-w-md shadow-xl card bg-base-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl card bg-base-100">
         <div className="p-6 card-body">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -263,6 +265,8 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                 <option value="nurse">Nurse</option>
                 <option value="frontdesk">Front Desk</option>
                 <option value="cashier">Cashier</option>
+                <option value="accountant">Accountant</option>
+                <option value="account-officer">Account Officer</option>
                 <option value="medical-laboratory">Medical Laboratory</option>
                 <option value="pharmacist">Pharmacist</option>
                 <option value="sonographer">Sonographer</option>

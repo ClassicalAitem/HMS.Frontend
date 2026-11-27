@@ -20,8 +20,10 @@ export const getRolePatientsPath = (role = "") => {
     case "receptionist":
       return "/frontdesk/patients";
     case "cashier":
-    case "account-officer":
       return "/cashier/patients";
+    case "accountant":
+    case "account-officer":
+      return "/accountant/patients";
     case "hmo":
       return "/dashboard/hmo/patients";
     case "admin":

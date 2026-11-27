@@ -106,6 +106,8 @@ const Login = () => {
           'admin': '/dashboard/admin',
           'super-admin': '/dashboard/superadmin',
           'cashier': '/cashier/dashboard',
+          'accountant': '/accountant/dashboard',
+          'account-officer': '/accountant/dashboard',
           'pharmacist': '/dashboard/pharmacist',
           'hmo': '/dashboard/hmo',
           'developer': '/developer/logs',
@@ -246,6 +248,9 @@ const Login = () => {
         return '/dashboard/superadmin';
       case 'cashier':
         return '/cashier/dashboard';
+      case 'accountant':
+      case 'account-officer':
+        return '/accountant/dashboard';
       case 'pharmacist':
         return '/dashboard/pharmacist';
       case 'hmo':

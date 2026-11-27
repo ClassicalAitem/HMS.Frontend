@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUserProfile } from '@/store/slices/authSlice';
 import usersAPI from '@/services/api/usersAPI';
 import shiftAccessAPI from '@/services/api/shiftAccessAPI';
+import UserAuthHistoryCard from '@/components/common/UserAuthHistoryCard';
 import toast from 'react-hot-toast';
 import {
   FaUserCircle,
@@ -1019,6 +1020,8 @@ const UserProfile = () => {
           </div>
         )}
       </div>
+
+      {isViewingOther && <UserAuthHistoryCard userId={activeUser?.id || activeUser?._id} />}
     </div>
   );
 };

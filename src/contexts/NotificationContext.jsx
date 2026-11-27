@@ -187,6 +187,28 @@ export const NotificationProvider = ({ children }) => {
     socket.on('patient:statusChanged', handleStatusChanged);
     socket.on('queue:midnight-reset', handleStatusChanged);
 
+    const handleForceLogout = (payload) => {
+      if (payload?.excludeUserId && String(payload.excludeUserId) === String(userId)) {
+        return;
+      }
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('persist:root');
+        localStorage.removeItem('changePasswordUserId');
+      } catch {}
+      toast.error(payload?.reason || 'You have been logged out by Super Admin.', {
+        id: 'force-logout',
+      });
+      disconnectSocket();
+      setTimeout(() => {
+        window.location.replace('/login');
+      }, 300);
+    };
+    socket.on('force_logout', handleForceLogout);
+
     // Client-side midnight rollover scheduler
     let midnightTimer = null;
     const scheduleMidnight = () => {
@@ -213,6 +235,7 @@ export const NotificationProvider = ({ children }) => {
       socket.off('patient:labResultReady', handleLabReady);
       socket.off('patient:statusChanged', handleStatusChanged);
       socket.off('queue:midnight-reset', handleStatusChanged);
+      socket.off('force_logout', handleForceLogout);
       if (midnightTimer) clearTimeout(midnightTimer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

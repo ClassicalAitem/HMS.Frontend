@@ -5,9 +5,14 @@ import {
   FaUsers,
   FaSignOutAlt,
   FaBoxes,
-  FaClipboardList,
+  FaUserInjured,
+  FaBed,
+  FaProcedures,
+  FaVial,
+  FaIdCard,
+  FaStethoscope,
 } from "react-icons/fa";
-import { MdLockOutline } from "react-icons/md";
+import { MdLockOutline, MdPregnantWoman } from "react-icons/md";
 import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 
@@ -34,25 +39,6 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
-  const isReportsActive =
-    location.pathname === "/dashboard/admin/reports" ||
-    location.pathname.startsWith("/dashboard/admin/patients") ||
-    location.pathname.startsWith("/dashboard/admin/opd") ||
-    location.pathname.startsWith("/dashboard/admin/admissions") ||
-    location.pathname.startsWith("/dashboard/admin/surgeries") ||
-    location.pathname.startsWith("/dashboard/admin/diagnostics") ||
-    location.pathname.startsWith("/dashboard/admin/antenatal") ||
-    location.pathname.startsWith("/dashboard/admin/phototherapy") ||
-    location.pathname.startsWith("/dashboard/admin/hmo-attendance");
-
-  const isStaffActive =
-    location.pathname.startsWith("/dashboard/admin/staff") ||
-    location.pathname.startsWith("/dashboard/admin/users");
-
-  const isSuppliesActive =
-    location.pathname.startsWith("/dashboard/admin/supplies") ||
-    location.pathname.startsWith("/dashboard/admin/stocks");
-
   const menuItems = [
     {
       icon: FaThLarge,
@@ -61,22 +47,64 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === "/dashboard/admin",
     },
     {
-      icon: FaClipboardList,
-      label: "Hospital Reports & Registry",
-      path: "/dashboard/admin/reports",
-      active: isReportsActive,
+      icon: FaUsers,
+      label: "Registered Patients",
+      path: "/dashboard/admin/patients",
+      active: location.pathname.startsWith("/dashboard/admin/patients"),
     },
     {
-      icon: FaUsers,
+      icon: FaUserInjured,
+      label: "OPD Patients",
+      path: "/dashboard/admin/opd",
+      active: location.pathname.startsWith("/dashboard/admin/opd"),
+    },
+    {
+      icon: FaBed,
+      label: "Admissions",
+      path: "/dashboard/admin/admissions",
+      active: location.pathname.startsWith("/dashboard/admin/admissions"),
+    },
+    {
+      icon: FaProcedures,
+      label: "Surgeries",
+      path: "/dashboard/admin/surgeries",
+      active: location.pathname.startsWith("/dashboard/admin/surgeries"),
+    },
+    {
+      icon: FaVial,
+      label: "Diagnostics & Scans",
+      path: "/dashboard/admin/diagnostics",
+      active: location.pathname.startsWith("/dashboard/admin/diagnostics"),
+    },
+    {
+      icon: MdPregnantWoman,
+      label: "Antenatal & Neonatal",
+      path: "/dashboard/admin/antenatal",
+      active:
+        location.pathname.startsWith("/dashboard/admin/antenatal") ||
+        location.pathname.startsWith("/dashboard/admin/phototherapy"),
+    },
+    {
+      icon: FaIdCard,
+      label: "HMO Attendance",
+      path: "/dashboard/admin/hmo-attendance",
+      active: location.pathname.startsWith("/dashboard/admin/hmo-attendance"),
+    },
+    {
+      icon: FaStethoscope,
       label: "Staff & Rosters",
       path: "/dashboard/admin/staff",
-      active: isStaffActive,
+      active:
+        location.pathname.startsWith("/dashboard/admin/staff") ||
+        location.pathname.startsWith("/dashboard/admin/users"),
     },
     {
       icon: FaBoxes,
       label: "Supplies & Inventory",
       path: "/dashboard/admin/supplies",
-      active: isSuppliesActive,
+      active:
+        location.pathname.startsWith("/dashboard/admin/supplies") ||
+        location.pathname.startsWith("/dashboard/admin/stocks"),
     },
   ];
 
@@ -84,26 +112,23 @@ const Sidebar = ({ onCloseSidebar }) => {
     <Link
       to={path}
       onClick={onCloseSidebar}
-      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
+      className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content shadow-xs"
           : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
       }`}
     >
-      <div className="flex flex-1 items-center gap-3 min-w-0">
-        <Icon className="w-5 h-5 shrink-0" />
-        <span className="truncate">{label}</span>
-      </div>
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{label}</span>
     </Link>
   );
 
   return (
     <div data-sidebar="true" className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100 pt-16">
-      {/* Navigation Menu */}
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
-        {menuItems.map((item, index) => (
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
+        {menuItems.map((item) => (
           <MenuItem
-            key={index}
+            key={item.path}
             icon={item.icon}
             label={item.label}
             path={item.path}
@@ -112,67 +137,44 @@ const Sidebar = ({ onCloseSidebar }) => {
         ))}
       </nav>
 
-      {/* Bottom Actions */}
       <div className="p-3 space-y-1.5 border-t border-base-200">
         <Link
           to="/change-password"
           onClick={onCloseSidebar}
-          className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
+          className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors ${
             location.pathname === "/change-password"
-              ? "bg-primary text-primary-content shadow-xs"
+              ? "bg-primary text-primary-content"
               : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
           }`}
         >
-          <MdLockOutline className="w-5 h-5 shrink-0" />
+          <MdLockOutline className="w-4 h-4 shrink-0" />
           <span>Change Password</span>
         </Link>
 
         <button
           onClick={() => setIsLogoutModalOpen(true)}
-          className="flex items-center gap-3 px-4 py-3 w-full text-sm font-semibold text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg text-error hover:bg-error/10 transition-colors"
         >
-          <FaSignOutAlt className="w-5 h-5 shrink-0" />
-          <span>Log Out</span>
+          <FaSignOutAlt className="w-4 h-4 shrink-0" />
+          <span>Logout</span>
         </button>
-      </div>
 
-      {/* User Profile */}
-      <div className="p-3 border-t border-base-200">
-        <Link
-          to="/profile"
-          onClick={onCloseSidebar}
-          className="flex items-center gap-3 p-2 rounded-xl hover:bg-base-200/80 transition-colors group cursor-pointer"
-          title="View profile"
-        >
-          <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10 shrink-0 group-hover:scale-105 transition-transform">
-            {user?.profilePicture ? (
-              <img
-                src={user.profilePicture}
-                alt={`${user.firstName} ${user.lastName}`}
-                className="object-cover w-10 h-10 rounded-full"
-              />
-            ) : (
-              <span className="text-sm font-bold text-primary">
-                {generateInitials(user?.firstName, user?.lastName)}
-              </span>
-            )}
+        <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-base-200/60">
+          <div className="w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-xs shrink-0">
+            {generateInitials(user?.firstName, user?.lastName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-base-content truncate group-hover:text-primary transition-colors">
-              {user?.firstName && user?.lastName
-                ? `${user.firstName} ${user.lastName}`
-                : "Administrator"}
+            <p className="text-xs font-bold text-base-content truncate">
+              {user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Administrator"}
             </p>
-            <p className="text-xs text-primary font-semibold">{formatRole(user?.role)}</p>
+            <p className="text-[11px] text-base-content/60 truncate">
+              {formatRole(user?.role || user?.accountType)}
+            </p>
           </div>
-        </Link>
+        </div>
       </div>
 
-      {/* Logout Modal */}
-      <LogoutModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-      />
+      <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import usersAPI from '@/services/api/usersAPI';
 import shiftAccessAPI from '@/services/api/shiftAccessAPI';
+import UserAuthHistoryCard from '@/components/common/UserAuthHistoryCard';
 import toast from 'react-hot-toast';
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import {
@@ -174,23 +175,31 @@ const StaffProfileModal = ({
                     </span>
                   )}
 
-                  {isOnLeave ? (
+                  {activeUser.isLoggedIn ? (
+                    <span className="badge badge-sm bg-teal-500 text-white border-0 font-semibold flex items-center gap-1 text-xs">
+                      <FaUserCheck className="w-2.5 h-2.5" />
+                      <span>On Duty (Logged In)</span>
+                    </span>
+                  ) : (
+                    <span className="badge badge-sm bg-white/20 text-white/90 border-0 font-semibold flex items-center gap-1 text-xs">
+                      <span>Off Duty</span>
+                    </span>
+                  )}
+
+                  {isOnLeave && (
                     <span className="badge badge-sm bg-amber-500 text-white border-0 font-semibold flex items-center gap-1 text-xs">
                       <FaBan className="w-2.5 h-2.5" />
                       <span>On Leave (Login Blocked)</span>
                     </span>
-                  ) : (
-                    <span className="badge badge-sm bg-teal-500 text-white border-0 font-semibold flex items-center gap-1 text-xs">
-                      <FaUserCheck className="w-2.5 h-2.5" />
-                      <span>On Duty / Active</span>
-                    </span>
                   )}
 
-                  {isDisabled && (
-                    <span className="badge badge-sm bg-rose-600 text-white border-0 font-semibold text-xs">
-                      Account Disabled
-                    </span>
-                  )}
+                  <span
+                    className={`badge badge-sm border-0 font-semibold text-xs ${
+                      isDisabled ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
+                    }`}
+                  >
+                    {isDisabled ? 'Account Disabled' : 'Active'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -467,13 +476,24 @@ const StaffProfileModal = ({
                   </div>
 
                   <div className="flex justify-between items-center py-1.5 border-b border-base-200/60">
+                    <span className="text-base-content/60">Duty Status</span>
+                    <span
+                      className={`badge badge-xs font-semibold ${
+                        activeUser.isLoggedIn ? 'badge-success text-white' : 'badge-ghost'
+                      }`}
+                    >
+                      {activeUser.isLoggedIn ? 'On Duty (Logged In)' : 'Off Duty'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1.5 border-b border-base-200/60">
                     <span className="text-base-content/60">Leave Governance</span>
                     <span
                       className={`badge badge-xs font-semibold ${
-                        isOnLeave ? 'badge-warning' : 'badge-success text-white'
+                        isOnLeave ? 'badge-warning' : 'badge-ghost'
                       }`}
                     >
-                      {isOnLeave ? 'On Leave (Login Blocked)' : 'On Duty'}
+                      {isOnLeave ? 'On Leave (Login Blocked)' : 'Not On Leave'}
                     </span>
                   </div>
 
@@ -637,6 +657,8 @@ const StaffProfileModal = ({
               </div>
             )}
           </div>
+
+          <UserAuthHistoryCard userId={activeUser?.id || activeUser?._id} />
         </div>
 
         {/* Modal Footer */}

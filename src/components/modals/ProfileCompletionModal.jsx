@@ -31,6 +31,7 @@ const ProfileCompletionModal = () => {
   const [nextOfKinRelationship, setNextOfKinRelationship] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Sync form state when user changes
@@ -152,8 +153,6 @@ const ProfileCompletionModal = () => {
       setIsSubmitting(false);
     }
   };
-
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;

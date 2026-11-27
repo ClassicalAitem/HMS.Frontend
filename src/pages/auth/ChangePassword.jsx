@@ -7,6 +7,7 @@ import PharmacistSidebar from '@/components/pharmacist/dashboard/Sidebar';
 import DoctorSidebar from '@/components/doctor/dashboard/Sidebar';
 import NurseSidebar from '@/components/nurse/dashboard/Sidebar';
 import CashierSidebar from '@/components/cashier/dashboard/Sidebar';
+import AccountantSidebar from '@/components/accountant/Sidebar';
 import AdminSidebar from '@/components/admin/dashboard/Sidebar';
 import SuperadminSidebar from '@/components/superadmin/dashboard/Sidebar';
 import MedicalDirectorSidebar from '@/components/medical-director/dashboard/Sidebar';
@@ -50,6 +51,8 @@ const ChangePassword = () => {
       case 'doctor': return DoctorSidebar;
       case 'nurse': return NurseSidebar;
       case 'cashier': return CashierSidebar;
+      case 'accountant':
+      case 'account-officer': return AccountantSidebar;
       case 'admin': return AdminSidebar;
       case 'super-admin':
       case 'superadmin': return SuperadminSidebar;
@@ -63,7 +66,7 @@ const ChangePassword = () => {
     }
   };
 
-  const SidebarComponent = getSidebarComponent(user?.role);
+  const SidebarComponent = getSidebarComponent(user?.role || user?.accountType);
 
   const togglePasswordVisibility = (field) => {
     setShowPasswords(prev => ({
@@ -112,6 +115,9 @@ const ChangePassword = () => {
               return '/dashboard/superadmin';
             case 'cashier':
               return '/cashier/dashboard';
+            case 'accountant':
+            case 'account-officer':
+              return '/accountant/dashboard';
             case 'hmo':
               return '/hmo/dashboard';
             case 'laboratory':

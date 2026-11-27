@@ -51,6 +51,7 @@ const ROLES_LIST = [
   { value: "human-resource", label: "Human Resources" },
   { value: "admin", label: "Hospital Administration" },
   { value: "account-officer", label: "Account Officers" },
+  { value: "accountant", label: "Accountants" },
   { value: "other-staff", label: "Support & Other Staff" },
 ];
 
@@ -69,6 +70,7 @@ const getRoleBadgeStyle = (accountType) => {
       return "badge-warning text-warning-content";
     case "cashier":
     case "account-officer":
+    case "accountant":
       return "badge-success text-success-content";
     case "front-desk":
     case "receptionist":
@@ -99,6 +101,7 @@ const getRoleIcon = (accountType) => {
       return <FaVial className="w-3.5 h-3.5" />;
     case "cashier":
     case "account-officer":
+    case "accountant":
       return <FaUserCheck className="w-3.5 h-3.5" />;
     case "admin":
     case "super-admin":

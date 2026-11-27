@@ -43,6 +43,7 @@ const ROLES_LIST = [
   { value: 'human-resource', label: 'Human Resources' },
   { value: 'other-staff', label: 'Other Staff' },
   { value: 'account-officer', label: 'Account Officer' },
+  { value: 'accountant', label: 'Accountant' },
 ];
 
 const STATUS_LIST = [
@@ -67,6 +68,8 @@ const getRoleBadgeStyle = (role) => {
     case 'lab-technician':
       return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20';
     case 'cashier':
+    case 'accountant':
+    case 'account-officer':
       return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
     // case 'super-admin':
     // case 'admin':

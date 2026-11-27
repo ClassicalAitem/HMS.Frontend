@@ -8,6 +8,11 @@ export const usersAPI = {
     return response;
   },
 
+  getAllUsers: async (params = {}) => {
+    const response = await apiClient.get(API_ENDPOINTS.USERS, { params });
+    return response;
+  },
+
   // Get user by ID
   getUserById: async (userId) => {
     const response = await apiClient.get(`${API_ENDPOINTS.USERS}/${userId}`);
@@ -76,6 +81,21 @@ export const usersAPI = {
   // Update current logged-in user profile
   updateProfile: async (profileData) => {
     const response = await apiClient.patch('/user/profile', profileData);
+    return response;
+  },
+
+  forceLogoutUser: async (userId) => {
+    const response = await apiClient.post(`/user/force-logout/${userId}`);
+    return response;
+  },
+
+  forceLogoutAll: async () => {
+    const response = await apiClient.post('/user/force-logout-all');
+    return response;
+  },
+
+  getUserAuthHistory: async (userId) => {
+    const response = await apiClient.get(`/user/${userId}/auth-history`);
     return response;
   },
 };

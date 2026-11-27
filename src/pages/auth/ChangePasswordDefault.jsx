@@ -58,6 +58,8 @@ const ChangePasswordDefault = () => {
         'admin': '/dashboard/admin',
         'super-admin': '/dashboard/superadmin',
         'cashier': '/dashboard/cashier',
+        'accountant': '/accountant/dashboard',
+        'account-officer': '/accountant/dashboard',
         'medical-laboratory': '/dashboard/laboratory',
         'medicallaboratory': '/dashboard/laboratory',
         'medical laboratory': '/dashboard/laboratory',

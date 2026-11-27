@@ -79,10 +79,6 @@ const PRIVILEGED_ROLES = new Set([
 ]);
 
 const MANAGEMENT_ROLES = new Set([
-  "super-admin",
-  "superadmin",
-  "super_admin",
-  "super admin",
   "admin",
   "hr",
   "human-resource",

@@ -53,8 +53,10 @@ const GlobalShortcutManager = () => {
       case 'nurse':
         return '/dashboard/nurse';
       case 'cashier':
-      case 'account-officer':
         return '/cashier/dashboard';
+      case 'accountant':
+      case 'account-officer':
+        return '/accountant/dashboard';
       case 'front-desk':
       case 'frontdesk':
       case 'receptionist':

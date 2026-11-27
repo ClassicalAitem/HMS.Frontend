@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
 import {
@@ -62,6 +63,8 @@ const AdminAntenatal = () => {
 
         return {
           id: rec._id || rec.id || `anc-${idx}`,
+          patientId: rec.patientId || patient.id || patient._id,
+          dependantId: rec.dependantId || null,
           patientName:
             [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() ||
             patient.fullName ||
@@ -143,19 +146,6 @@ const AdminAntenatal = () => {
           </button>
         </div>
 
-        {/* Clinical Note Banner for SVD */}
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary-content">
-          <FaInfoCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-bold text-sm text-primary">
-              Medical Explanation: What is SVD (Spontaneous Vaginal Delivery)?
-            </h4>
-            <p className="text-xs text-base-content/85 mt-1 leading-relaxed">
-              <strong>SVD</strong> stands for <strong>Spontaneous Vaginal Delivery</strong>. It is the natural, unassisted delivery of a baby through the vaginal canal without needing Caesarean surgery (C-Section) or vacuum/forceps extraction. Tracking SVD vs Caesarean sections is one of the most critical health indicators in hospital maternal care audits.
-            </p>
-          </div>
-        </div>
-
         {/* Counter Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-xl bg-base-100 border border-base-200 shadow-sm">
@@ -206,17 +196,13 @@ const AdminAntenatal = () => {
               <KolakLoader text="Loading antenatal data..." />
             </div>
           ) : (
-            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+            <div className="overflow-x-auto">
               <table className="table table-zebra w-full text-left">
-                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
+                <thead className="bg-base-200/90 text-xs font-bold text-base-content uppercase border-b border-base-200">
                   <tr>
                     <th className="py-3.5 px-4">Hospital ID</th>
                     <th className="px-4">Mother's Name</th>
                     <th className="px-4">Booking Date</th>
-                    <th className="px-4">LMP</th>
-                    <th className="px-4">EDD</th>
-                    <th className="px-4">Gestational Age</th>
-                    <th className="px-4">Foetal Heart</th>
                     <th className="px-4">Delivery Mode</th>
                     <th className="px-4">Status</th>
                   </tr>
@@ -224,7 +210,7 @@ const AdminAntenatal = () => {
                 <tbody className="divide-y divide-base-200 text-sm">
                   {paginatedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-base-content/50">
+                      <td colSpan={5} className="py-12 text-center text-base-content/50">
                         No antenatal records found.
                       </td>
                     </tr>
@@ -232,16 +218,25 @@ const AdminAntenatal = () => {
                     paginatedRows.map((anc, idx) => (
                       <tr key={anc.id || idx} className="hover:bg-base-200/40">
                         <td className="px-4 py-3 font-semibold text-accent">{anc.hospitalId}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">{anc.patientName}</td>
+                        <td className="px-4 py-3 font-medium text-base-content">
+                          {anc.patientId ? (
+                            <Link
+                              to={
+                                anc.dependantId
+                                  ? `/dashboard/admin/patients/${anc.patientId}?dependantId=${anc.dependantId}`
+                                  : `/dashboard/admin/patients/${anc.patientId}`
+                              }
+                              className="text-primary hover:underline font-semibold"
+                            >
+                              {anc.patientName}
+                            </Link>
+                          ) : (
+                            anc.patientName
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-base-content/80 whitespace-nowrap">
                           {anc.bookingDate ? formatNigeriaDate(anc.bookingDate) : "—"}
                         </td>
-                        <td className="px-4 py-3 text-base-content/80 whitespace-nowrap">{anc.lmp}</td>
-                        <td className="px-4 py-3 text-base-content/80 whitespace-nowrap font-semibold">
-                          {anc.edd}
-                        </td>
-                        <td className="px-4 py-3 text-base-content/80">{anc.ega}</td>
-                        <td className="px-4 py-3 text-base-content/80">{anc.foetalHeart}</td>
                         <td className="px-4 py-3">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-bold ${

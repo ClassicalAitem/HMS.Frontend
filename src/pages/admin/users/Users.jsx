@@ -323,6 +323,7 @@ const Users = () => {
                                 <option value="nurse">Nurse</option>
                                 <option value="front-desk">Frontdesk</option>
                                 <option value="cashier">Cashier</option>
+                                <option value="accountant">Accountant</option>
                                 <option value="pharmacist">Pharmacist</option>
                                 
                               </select>

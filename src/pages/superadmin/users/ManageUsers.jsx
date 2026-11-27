@@ -18,7 +18,9 @@ import {
   FaToggleOff,
   FaKey,
   FaEye,
+  FaSignOutAlt,
 } from 'react-icons/fa';
+import { usersAPI } from '../../../services/api/usersAPI';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   fetchUsers,
@@ -49,6 +51,27 @@ const ManageUsers = () => {
   const handleOpenProfile = (user) => {
     setProfileUser(user);
     setIsProfileModalOpen(true);
+  };
+
+  const handleForceLogoutUser = async (targetUser) => {
+    const name = `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.email;
+    if (!window.confirm(`Force log out ${name} from all active browser sessions?`)) return;
+    try {
+      await usersAPI.forceLogoutUser(targetUser.id);
+      toast.success(`${name} has been logged out`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to force logout user'));
+    }
+  };
+
+  const handleForceLogoutAll = async () => {
+    if (!window.confirm('Force log out ALL users (except you) from their browsers immediately?')) return;
+    try {
+      await usersAPI.forceLogoutAll();
+      toast.success('All other users have been logged out');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to force logout all users'));
+    }
   };
 
   // Leave toggle confirmation modal state
@@ -319,10 +342,13 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
       title: 'Status',
       sortable: true,
       className: 'text-base-content/70',
-      render: (value) => (
-        <div className="flex items-center space-x-2">
-          <span className={`badge ${value ? 'badge-success' : 'badge-error'}`}>
+      render: (value, row) => (
+        <div className="flex flex-col gap-1">
+          <span className={`badge badge-sm ${value ? 'badge-success text-white' : 'badge-error text-white'}`}>
             {value ? 'Active' : 'Disabled'}
+          </span>
+          <span className={`badge badge-xs ${row.isLoggedIn ? 'badge-info text-white' : 'badge-ghost text-base-content/60'}`}>
+            {row.isLoggedIn ? 'On Duty' : 'Off Duty'}
           </span>
         </div>
       )
@@ -347,7 +373,7 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
                     ? 'bg-warning/15 border-warning/40 text-warning-content font-bold shadow-xs'
                     : 'bg-base-200/40 border-base-300 hover:border-warning/50 text-base-content/70'
                 }`}
-                title={isOnLeave ? 'Staff is currently on leave (login blocked)' : 'Staff is on duty'}
+                title={isOnLeave ? 'Staff is currently on leave (login blocked)' : 'Not on leave'}
               >
                 <input
                   type="checkbox"
@@ -356,7 +382,7 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
                   className="checkbox checkbox-xs checkbox-warning"
                 />
                 <span className="text-xs">
-                  {isOnLeave ? 'On Leave' : 'On Duty'}
+                  {isOnLeave ? 'On Leave' : 'Available'}
                 </span>
               </label>
             )}
@@ -449,6 +475,13 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
               <FaKey className="w-3 h-3" />
             </button>
           <button
+            onClick={() => handleForceLogoutUser(row)}
+            className="btn btn-ghost btn-xs text-warning"
+            title="Force Logout User"
+          >
+            <FaSignOutAlt className="w-3 h-3" />
+          </button>
+          <button
             onClick={() => handleDeleteUser(row.id)}
             className="btn btn-ghost btn-xs text-error"
             title="Delete User"
@@ -491,13 +524,23 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
               <h1 className="text-2xl font-normal text-primary 2xl:text-3xl">Manage Users</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage system users and their permissions</p>
             </div>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="btn btn-primary"
-            >
-              <FaPlus className="mr-2 w-4 h-4" />
-              Add User
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleForceLogoutAll}
+                className="btn btn-outline btn-error"
+                title="Log out all other users immediately"
+              >
+                <FaSignOutAlt className="mr-2 w-4 h-4" />
+                Logout All Users
+              </button>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="btn btn-primary"
+              >
+                <FaPlus className="mr-2 w-4 h-4" />
+                Add User
+              </button>
+            </div>
           </div>
 
           {/* Filter Users Section */}

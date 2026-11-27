@@ -99,6 +99,7 @@ const Users = lazy(() => import("@/pages/admin/users/Users"));
 const StaffList = lazy(() => import("@/pages/admin/users/StaffList"));
 const AdminReports = lazy(() => import("@/pages/admin/reports/AdminReports"));
 const AdminPatients = lazy(() => import("@/pages/admin/patients/AdminPatients"));
+const AdminPatientDetails = lazy(() => import("@/pages/admin/patients/AdminPatientDetails"));
 const AdminOpd = lazy(() => import("@/pages/admin/opd/AdminOpd"));
 const AdminAdmissions = lazy(() => import("@/pages/admin/admissions/AdminAdmissions"));
 const AdminSurgeries = lazy(() => import("@/pages/admin/surgeries/AdminSurgeries"));
@@ -229,6 +230,15 @@ const PharmacyAdmittedPatient = lazy(() => import("@/pages/pharmacist/admissions
 
 // HR Dashboard & Management Routes
 const HrDashboard = lazy(() => import("@/pages/hr/dashboard/HrDashboard"));
+
+// Accountant Dashboard & Finance Routes
+const AccountantDashboard = lazy(() => import("@/pages/accountant/AccountantDashboard"));
+const AccountantRevenue = lazy(() => import("@/pages/accountant/AccountantRevenue"));
+const AccountantExpenses = lazy(() => import("@/pages/accountant/AccountantExpenses"));
+const AccountantLedger = lazy(() => import("@/pages/accountant/AccountantLedger"));
+const AccountantInventoryBalance = lazy(() => import("@/pages/accountant/AccountantInventoryBalance"));
+const AccountantPatients = lazy(() => import("@/pages/accountant/AccountantPatients"));
+const AccountantPatientDetails = lazy(() => import("@/pages/accountant/AccountantPatientDetails"));
 const HrDoctorQueue = lazy(() => import("@/pages/hr/queue/DoctorQueue"));
 const HrNurseQueue = lazy(() => import("@/pages/hr/queue/NurseQueue"));
 const HrStaffManagement = lazy(() => import("@/pages/hr/staff/HrStaffManagement"));
@@ -963,8 +973,13 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       <Route path="/dashboard/admin/patients" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['admin', 'super-admin']}>
           <AdminPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/patients/:patientId" element={
+        <ProtectedRoute allowedRoles={['admin', 'super-admin']}>
+          <AdminPatientDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/admin/opd" element={
@@ -1534,6 +1549,43 @@ const AppRoutes = () => {
       <Route path="/dashboard/hr/patients/:patientId" element={
         <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
           <HrPatientDetails />
+        </ProtectedRoute>
+      } />
+
+      {/* ====================================  Accountant Dashboard & Workspaces  ===================================================== */}
+      <Route path="/accountant/dashboard" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/revenue" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantRevenue />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/expenses" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantExpenses />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/ledger" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantLedger />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/inventory-balance" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantInventoryBalance />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/patients" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/accountant/patients/:id" element={
+        <ProtectedRoute allowedRoles={['accountant', 'account-officer', 'admin', 'super-admin', 'medical-director']}>
+          <AccountantPatientDetails />
         </ProtectedRoute>
       } />
 

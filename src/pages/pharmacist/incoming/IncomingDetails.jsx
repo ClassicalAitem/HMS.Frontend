@@ -9,7 +9,8 @@ import { getAnteNatalRecordByPatientId, unwrapAnteNatalRecords } from '@/service
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
-import { getInventories } from '@/services/api/inventoryAPI'
+import { getInventories, updateInventory } from '@/services/api/inventoryAPI'
+import { computeInventorySellingPriceFromUnitPrice } from '@/utils/prescriptionsCalculator'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal, AntenatalDetailModal } from '@/components/modals'
 import VerifyPrescriptionModal from '@/components/modals/VerifyPrescriptionModal'
@@ -598,7 +599,39 @@ const getDispenseInfo = (med) => {
             : item
         ),
       }))
-      toast.success('Prescription verified and updated')
+
+      // Sync any changed unit prices back to hospital inventory sellingPrice
+      const inventoryPriceUpdates = new Map()
+      updatedMeds.forEach((med) => {
+        if (med.availability === 'unavailable' || !med.inventoryId) return
+        const inv = inventory.find((i) => String(i._id || i.id) === String(med.inventoryId))
+        if (!inv) return
+        const rawSellingPrice = computeInventorySellingPriceFromUnitPrice(med, inv, med.unitPrice)
+        if (rawSellingPrice === null) return
+        const nextSellingPrice = Math.round(rawSellingPrice * 100) / 100
+        if (Math.abs(nextSellingPrice - Number(inv.sellingPrice || 0)) >= 0.01) {
+          inventoryPriceUpdates.set(String(inv._id || inv.id), nextSellingPrice)
+        }
+      })
+
+      if (inventoryPriceUpdates.size > 0) {
+        await Promise.all(
+          Array.from(inventoryPriceUpdates.entries()).map(([id, sellingPrice]) =>
+            updateInventory(id, { sellingPrice })
+          )
+        )
+        setInventory((prev) =>
+          prev.map((item) => {
+            const id = String(item._id || item.id)
+            return inventoryPriceUpdates.has(id)
+              ? { ...item, sellingPrice: inventoryPriceUpdates.get(id) }
+              : item
+          })
+        )
+        toast.success('Prescription verified and inventory price updated')
+      } else {
+        toast.success('Prescription verified and updated')
+      }
       setEditingPrescription(null)
     } catch (err) {
       console.error('Failed to save prescription verification:', err)
