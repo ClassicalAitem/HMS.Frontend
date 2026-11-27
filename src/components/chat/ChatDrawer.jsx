@@ -288,12 +288,12 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
           return prev.map((c) =>
             c.id === convId
               ? {
-                  ...c,
-                  lastMessageText: newMsg.content,
-                  lastMessageAt: newMsg.createdAt,
-                  lastSenderName: newMsg.senderName,
-                  isUnread: selectedConv?.id === convId ? false : true,
-                }
+                ...c,
+                lastMessageText: newMsg.content,
+                lastMessageAt: newMsg.createdAt,
+                lastSenderName: newMsg.senderName,
+                isUnread: selectedConv?.id === convId ? false : true,
+              }
               : c
           );
         } else {
@@ -666,13 +666,13 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
                       ? selectedConv.targetRole === "nurse" && (userRole === "doctor" || userRole === "surgeon")
                         ? "⚡ Emergency Channel (Doctors & Nurses)"
                         : selectedConv.targetRole === "doctor" && userRole === "nurse"
-                        ? "⚡ Emergency Channel (Nurses & Doctors)"
-                        : `Department Channel: ${selectedConv.targetRole || "Role"}`
+                          ? "⚡ Emergency Channel (Nurses & Doctors)"
+                          : `Department Channel: ${selectedConv.targetRole || "Role"}`
                       : selectedConv.type === "group"
-                      ? "Custom Team / Committee Group"
-                      : selectedConv.type === "broadcast"
-                      ? "Official Broadcast"
-                      : "Direct Message"
+                        ? "Custom Team / Committee Group"
+                        : selectedConv.type === "broadcast"
+                          ? "Official Broadcast"
+                          : "Direct Message"
                     : "Instant messaging & role broadcasts"}
                 </p>
               </div>
@@ -682,9 +682,8 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
               {selectedConv && (
                 <button
                   onClick={() => setShowSearchChat((prev) => !prev)}
-                  className={`btn btn-ghost btn-circle btn-xs ${
-                    showSearchChat ? "text-primary bg-primary/10" : "text-base-content/60"
-                  } hover:text-base-content`}
+                  className={`btn btn-ghost btn-circle btn-xs ${showSearchChat ? "text-primary bg-primary/10" : "text-base-content/60"
+                    } hover:text-base-content`}
                   title="Search messages in this conversation"
                 >
                   <FaSearch className="text-[11px]" />
@@ -784,43 +783,39 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
               <div className="flex border-b border-base-200 bg-base-200/50 px-2 text-xs font-bold">
                 <button
                   onClick={() => setActiveTab("all")}
-                  className={`py-2 px-3 border-b-2 transition ${
-                    activeTab === "all"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-base-content/70 hover:text-base-content"
-                  }`}
+                  className={`py-2 px-3 border-b-2 transition ${activeTab === "all"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/70 hover:text-base-content"
+                    }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setActiveTab("roles")}
-                  className={`py-2 px-3 border-b-2 transition ${
-                    activeTab === "roles"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-base-content/70 hover:text-base-content"
-                  }`}
+                  className={`py-2 px-3 border-b-2 transition ${activeTab === "roles"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/70 hover:text-base-content"
+                    }`}
                 >
                   Groups
                 </button>
                 {!isManagementRole && (
                   <button
                     onClick={() => setActiveTab("direct")}
-                    className={`py-2 px-3 border-b-2 transition ${
-                      activeTab === "direct"
-                        ? "border-primary text-primary"
-                        : "border-transparent text-base-content/70 hover:text-base-content"
-                    }`}
+                    className={`py-2 px-3 border-b-2 transition ${activeTab === "direct"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-base-content/70 hover:text-base-content"
+                      }`}
                   >
                     Direct
                   </button>
                 )}
                 <button
                   onClick={() => setActiveTab("broadcast")}
-                  className={`py-2 px-3 border-b-2 transition ${
-                    activeTab === "broadcast"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-base-content/70 hover:text-base-content"
-                  }`}
+                  className={`py-2 px-3 border-b-2 transition ${activeTab === "broadcast"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/70 hover:text-base-content"
+                    }`}
                 >
                   Broadcasts
                 </button>
@@ -851,21 +846,19 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
                       <button
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv)}
-                        className={`w-full flex items-center justify-between p-3 rounded-2xl transition text-left group border ${
-                          conv.isUnread
-                            ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
-                            : "hover:bg-base-200/80 border-transparent"
-                        }`}
+                        className={`w-full flex items-center justify-between p-3 rounded-2xl transition text-left group border ${conv.isUnread
+                          ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                          : "hover:bg-base-200/80 border-transparent"
+                          }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center font-bold text-xs uppercase border ${
-                              isBroadcast
-                                ? "bg-warning/10 text-warning border-warning/30"
-                                : isGroup
+                            className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center font-bold text-xs uppercase border ${isBroadcast
+                              ? "bg-warning/10 text-warning border-warning/30"
+                              : isGroup
                                 ? "bg-secondary/10 text-secondary border-secondary/30"
                                 : "bg-primary/10 text-primary border-primary/20"
-                            }`}
+                              }`}
                           >
                             {isBroadcast ? (
                               <FaBullhorn />
@@ -943,284 +936,280 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
                         <div
                           className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}
                         >
-                        {!isMe && (
-                          <div className="flex items-center gap-1.5 mb-1 px-1">
-                            <span className="text-[11px] font-bold text-base-content/80">
-                              {msg.senderName}
-                            </span>
-                            <span className="badge badge-xs badge-ghost text-[9px] uppercase tracking-wider">
-                              {msg.senderRole ? msg.senderRole.replace(/-/g, " ") : "Staff"}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-1.5 max-w-[85%] relative">
-                          {isMe && (
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Add reaction"
-                                >
-                                  <FaSmile className="text-base" />
-                                </button>
-                              )}
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedInfoMsg(msg)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Message Info"
-                                >
-                                  <FaInfoCircle className="text-sm" />
-                                </button>
-                              )}
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setReplyingTo({
-                                      id: msg.id,
-                                      senderName: msg.senderName,
-                                      content: msg.content,
-                                    });
-                                    messageInputRef.current?.focus();
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Reply to message"
-                                >
-                                  <FaReply className="text-sm" />
-                                </button>
-                              )}
-                              {canEdit && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(msg)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-warning hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Edit message"
-                                >
-                                  <FaPencilAlt className="text-sm" />
-                                </button>
-                              )}
-                              {canDelete && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteMessage(msg.id)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Delete message"
-                                >
-                                  <FaTrashAlt className="text-sm" />
-                                </button>
-                              )}
+                          {!isMe && (
+                            <div className="flex items-center gap-1.5 mb-1 px-1">
+                              <span className="text-[11px] font-bold text-base-content/80">
+                                {msg.senderName}
+                              </span>
+                              <span className="badge badge-xs badge-ghost text-[9px] uppercase tracking-wider">
+                                {msg.senderRole ? msg.senderRole.replace(/-/g, " ") : "Staff"}
+                              </span>
                             </div>
                           )}
 
-                          {(() => {
-                            const isSpecial = isUrgent || isAnnouncement;
-                            return (
-                              <div
-                                className={`rounded-2xl p-2.5 shadow-xs text-xs relative flex-1 ${
-                                  msg.isDeleted
+                          <div className="flex items-center gap-1.5 max-w-[85%] relative">
+                            {isMe && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Add reaction"
+                                  >
+                                    <FaSmile className="text-base" />
+                                  </button>
+                                )}
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedInfoMsg(msg)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Message Info"
+                                  >
+                                    <FaInfoCircle className="text-sm" />
+                                  </button>
+                                )}
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReplyingTo({
+                                        id: msg.id,
+                                        senderName: msg.senderName,
+                                        content: msg.content,
+                                      });
+                                      messageInputRef.current?.focus();
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Reply to message"
+                                  >
+                                    <FaReply className="text-sm" />
+                                  </button>
+                                )}
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(msg)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-warning hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Edit message"
+                                  >
+                                    <FaPencilAlt className="text-sm" />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Delete message"
+                                  >
+                                    <FaTrashAlt className="text-sm" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {(() => {
+                              const isSpecial = isUrgent || isAnnouncement;
+                              return (
+                                <div
+                                  className={`rounded-2xl p-2.5 shadow-xs text-xs relative flex-1 ${msg.isDeleted
                                     ? "bg-base-200/70 border border-base-300 text-base-content/50"
                                     : isUrgent
-                                    ? "bg-amber-500/15 border border-amber-500/40 text-amber-950 dark:text-amber-100 shadow-xs"
-                                    : isAnnouncement
-                                    ? "bg-blue-500/15 border border-blue-500/40 text-blue-950 dark:text-blue-100 shadow-xs"
-                                    : isMe
-                                    ? "bg-primary text-primary-content rounded-br-none"
-                                    : "bg-base-100 border border-base-300 text-base-content rounded-bl-none"
-                                }`}
-                              >
-                                {/* Reply Quote Banner */}
-                                {msg.replyToContent && !msg.isDeleted && (
-                                  <div
-                                    className={`mb-1.5 pl-2 border-l-2 text-[10px] p-1 rounded-r-lg ${
-                                      isMe && !isSpecial
+                                      ? "bg-amber-500/15 border border-amber-500/40 text-amber-950 dark:text-amber-100 shadow-xs"
+                                      : isAnnouncement
+                                        ? "bg-blue-500/15 border border-blue-500/40 text-blue-950 dark:text-blue-100 shadow-xs"
+                                        : isMe
+                                          ? "bg-primary text-primary-content rounded-br-none"
+                                          : "bg-base-100 border border-base-300 text-base-content rounded-bl-none"
+                                    }`}
+                                >
+                                  {/* Reply Quote Banner */}
+                                  {msg.replyToContent && !msg.isDeleted && (
+                                    <div
+                                      className={`mb-1.5 pl-2 border-l-2 text-[10px] p-1 rounded-r-lg ${isMe && !isSpecial
                                         ? "border-white/80 bg-black/15 text-white/90"
                                         : isUrgent
-                                        ? "border-amber-600 bg-amber-500/20 text-amber-950 dark:text-amber-100"
-                                        : isAnnouncement
-                                        ? "border-blue-600 bg-blue-500/20 text-blue-950 dark:text-blue-100"
-                                        : "border-primary bg-primary/10 text-base-content/80"
-                                    }`}
-                                  >
-                                    <div className="font-bold flex items-center gap-1">
-                                      <FaReply className="text-[8px]" /> {msg.replyToSenderName || "Staff"}
+                                          ? "border-amber-600 bg-amber-500/20 text-amber-950 dark:text-amber-100"
+                                          : isAnnouncement
+                                            ? "border-blue-600 bg-blue-500/20 text-blue-950 dark:text-blue-100"
+                                            : "border-primary bg-primary/10 text-base-content/80"
+                                        }`}
+                                    >
+                                      <div className="font-bold flex items-center gap-1">
+                                        <FaReply className="text-[8px]" /> {msg.replyToSenderName || "Staff"}
+                                      </div>
+                                      <p className="truncate opacity-80">{msg.replyToContent}</p>
                                     </div>
-                                    <p className="truncate opacity-80">{msg.replyToContent}</p>
-                                  </div>
-                                )}
+                                  )}
 
-                                {isUrgent && !msg.isDeleted && (
-                                  <div className="flex items-center gap-1 text-[11px] font-extrabold text-amber-800 dark:text-amber-400 mb-1.5 uppercase tracking-wider">
-                                    <FaExclamationCircle /> Urgent Directive
-                                  </div>
-                                )}
+                                  {isUrgent && !msg.isDeleted && (
+                                    <div className="flex items-center gap-1 text-[11px] font-extrabold text-amber-800 dark:text-amber-400 mb-1.5 uppercase tracking-wider">
+                                      <FaExclamationCircle /> Urgent Directive
+                                    </div>
+                                  )}
 
-                                {isAnnouncement && !msg.isDeleted && (
-                                  <div className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 mb-1.5 uppercase tracking-wider">
-                                    <FaBullhorn /> Hospital Announcement
-                                  </div>
-                                )}
+                                  {isAnnouncement && !msg.isDeleted && (
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 mb-1.5 uppercase tracking-wider">
+                                      <FaBullhorn /> Hospital Announcement
+                                    </div>
+                                  )}
 
-                                {msg.patientRefId && !msg.isDeleted && (
-                                  <div
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold mb-1.5 border shadow-2xs ${
-                                      isUrgent
+                                  {msg.patientRefId && !msg.isDeleted && (
+                                    <div
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold mb-1.5 border shadow-2xs ${isUrgent
                                         ? "bg-amber-200/90 text-amber-950 border-amber-400 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-700"
                                         : isAnnouncement
-                                        ? "bg-blue-200/90 text-blue-950 border-blue-400 dark:bg-blue-950/70 dark:text-blue-200 dark:border-blue-700"
-                                        : isMe
-                                        ? "bg-white/20 text-white border-white/30 backdrop-blur-xs"
-                                        : "bg-primary/10 text-primary border-primary/20"
-                                    }`}
-                                  >
-                                    <FaHospitalUser className={`text-[11px] ${isUrgent ? "text-amber-800 dark:text-amber-400" : isAnnouncement ? "text-blue-700 dark:text-blue-400" : ""}`} />
-                                    <span>Patient: {msg.patientRefId}</span>
-                                  </div>
-                                )}
+                                          ? "bg-blue-200/90 text-blue-950 border-blue-400 dark:bg-blue-950/70 dark:text-blue-200 dark:border-blue-700"
+                                          : isMe
+                                            ? "bg-white/20 text-white border-white/30 backdrop-blur-xs"
+                                            : "bg-primary/10 text-primary border-primary/20"
+                                        }`}
+                                    >
+                                      <FaHospitalUser className={`text-[11px] ${isUrgent ? "text-amber-800 dark:text-amber-400" : isAnnouncement ? "text-blue-700 dark:text-blue-400" : ""}`} />
+                                      <span>Patient: {msg.patientRefId}</span>
+                                    </div>
+                                  )}
 
-                                {msg.isDeleted ? (
-                                  <p className="italic text-[11px] opacity-60 flex items-center gap-1.5 py-0.5">
-                                    <FaBan className="text-[10px]" /> This message was deleted
-                                  </p>
-                                ) : (
-                                  <p className={`whitespace-pre-wrap leading-relaxed ${isUrgent ? "font-medium text-amber-950 dark:text-amber-100" : isAnnouncement ? "font-medium text-blue-950 dark:text-blue-100" : ""}`}>
-                                    {renderMessageContent(msg.content, chatSearchQuery)}
-                                  </p>
-                                )}
+                                  {msg.isDeleted ? (
+                                    <p className="italic text-[11px] opacity-60 flex items-center gap-1.5 py-0.5">
+                                      <FaBan className="text-[10px]" /> This message was deleted
+                                    </p>
+                                  ) : (
+                                    <p className={`whitespace-pre-wrap leading-relaxed ${isUrgent ? "font-medium text-amber-950 dark:text-amber-100" : isAnnouncement ? "font-medium text-blue-950 dark:text-blue-100" : ""}`}>
+                                      {renderMessageContent(msg.content, chatSearchQuery)}
+                                    </p>
+                                  )}
 
-                                <div
-                                  className={`text-[9px] mt-1 text-right flex items-center justify-end gap-1 ${
-                                    isUrgent
+                                  <div
+                                    className={`text-[9px] mt-1 text-right flex items-center justify-end gap-1 ${isUrgent
                                       ? "text-amber-900/70 dark:text-amber-300/70 font-semibold"
                                       : isAnnouncement
-                                      ? "text-blue-900/70 dark:text-blue-300/70 font-medium"
-                                      : isMe && !msg.isDeleted
-                                      ? "text-primary-content/75"
-                                      : "text-base-content/50"
-                                  }`}
-                                >
-                                  {msg.isEdited && !msg.isDeleted && (
-                                    <span className="italic opacity-70 text-[8px]">(edited)</span>
-                                  )}
-                                  <span>{formatTime(msg.createdAt)}</span>
-                                  {isMe && !msg.isDeleted && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedInfoMsg(msg);
-                                      }}
-                                      className="cursor-pointer hover:scale-115 transition inline-flex items-center ml-0.5"
-                                      title={
-                                        Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId)
-                                          ? "Read by recipient(s) - Click for info"
-                                          : "Delivered - Click for info"
-                                      }
-                                    >
-                                      {Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId) ? (
-                                        <FaCheckDouble className="text-sky-400 text-[10px]" />
-                                      ) : (
-                                        <FaCheckDouble className="opacity-55 text-[10px]" />
-                                      )}
-                                    </button>
-                                  )}
+                                        ? "text-blue-900/70 dark:text-blue-300/70 font-medium"
+                                        : isMe && !msg.isDeleted
+                                          ? "text-primary-content/75"
+                                          : "text-base-content/50"
+                                      }`}
+                                  >
+                                    {msg.isEdited && !msg.isDeleted && (
+                                      <span className="italic opacity-70 text-[8px]">(edited)</span>
+                                    )}
+                                    <span>{formatTime(msg.createdAt)}</span>
+                                    {isMe && !msg.isDeleted && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedInfoMsg(msg);
+                                        }}
+                                        className="cursor-pointer hover:scale-115 transition inline-flex items-center ml-0.5"
+                                        title={
+                                          Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId)
+                                            ? "Read by recipient(s) - Click for info"
+                                            : "Delivered - Click for info"
+                                        }
+                                      >
+                                        {Array.isArray(msg.readBy) && msg.readBy.some((r) => r.userId !== currentUserId) ? (
+                                          <FaCheckDouble className="text-sky-400 text-[10px]" />
+                                        ) : (
+                                          <FaCheckDouble className="opacity-55 text-[10px]" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
+                              );
+                            })()}
+
+                            {!isMe && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Add reaction"
+                                  >
+                                    <FaSmile className="text-base" />
+                                  </button>
+                                )}
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedInfoMsg(msg)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Message Info"
+                                  >
+                                    <FaInfoCircle className="text-sm" />
+                                  </button>
+                                )}
+                                {!msg.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReplyingTo({
+                                        id: msg.id,
+                                        senderName: msg.senderName,
+                                        content: msg.content,
+                                      });
+                                      messageInputRef.current?.focus();
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Reply to message"
+                                  >
+                                    <FaReply className="text-sm" />
+                                  </button>
+                                )}
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(msg)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-warning hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Edit message"
+                                  >
+                                    <FaPencilAlt className="text-sm" />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
+                                    title="Delete message"
+                                  >
+                                    <FaTrashAlt className="text-sm" />
+                                  </button>
+                                )}
                               </div>
-                            );
-                          })()}
-
-                          {!isMe && (
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0 bg-base-100/95 backdrop-blur-md border border-base-300 shadow-md px-2 py-1 rounded-full">
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Add reaction"
-                                >
-                                  <FaSmile className="text-base" />
-                                </button>
-                              )}
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedInfoMsg(msg)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-info hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Message Info"
-                                >
-                                  <FaInfoCircle className="text-sm" />
-                                </button>
-                              )}
-                              {!msg.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setReplyingTo({
-                                      id: msg.id,
-                                      senderName: msg.senderName,
-                                      content: msg.content,
-                                    });
-                                    messageInputRef.current?.focus();
-                                  }}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-primary hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Reply to message"
-                                >
-                                  <FaReply className="text-sm" />
-                                </button>
-                              )}
-                              {canEdit && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(msg)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-warning hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Edit message"
-                                >
-                                  <FaPencilAlt className="text-sm" />
-                                </button>
-                              )}
-                              {canDelete && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteMessage(msg.id)}
-                                  className="w-8 h-8 flex items-center justify-center text-base-content/70 hover:text-error hover:bg-base-200 rounded-full transition cursor-pointer"
-                                  title="Delete message"
-                                >
-                                  <FaTrashAlt className="text-sm" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Reaction Picker Popup */}
-                        <div className={`relative w-full flex ${isMe ? "justify-end" : "justify-start"}`}>
-                          <div className="relative">
-                            <MessageReactionPicker
-                              isOpen={reactionPickerMsgId === msg.id}
-                              onClose={() => setReactionPickerMsgId(null)}
-                              onSelectEmoji={(emoji) => handleToggleReaction(msg.id, emoji)}
-                              position="top"
-                              align={isMe ? "end" : "start"}
-                            />
+                            )}
                           </div>
-                        </div>
 
-                        {/* Reaction Badges */}
-                        <MessageReactionBadges
-                          reactions={msg.reactions}
-                          currentUserId={currentUserId}
-                          onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji)}
-                          onOpenPicker={() => setReactionPickerMsgId(msg.id)}
-                          align={isMe ? "end" : "start"}
-                        />
-                      </div>
-                    </React.Fragment>
-                  );
-                })
+                          {/* Reaction Picker Popup */}
+                          <div className={`relative w-full flex ${isMe ? "justify-end" : "justify-start"}`}>
+                            <div className="relative">
+                              <MessageReactionPicker
+                                isOpen={reactionPickerMsgId === msg.id}
+                                onClose={() => setReactionPickerMsgId(null)}
+                                onSelectEmoji={(emoji) => handleToggleReaction(msg.id, emoji)}
+                                position="top"
+                                align={isMe ? "end" : "start"}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Reaction Badges */}
+                          <MessageReactionBadges
+                            reactions={msg.reactions}
+                            currentUserId={currentUserId}
+                            onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji)}
+                            onOpenPicker={() => setReactionPickerMsgId(msg.id)}
+                            align={isMe ? "end" : "start"}
+                          />
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
                 )}
                 {typingUser && (
                   <div className="text-[11px] text-base-content/50 italic px-2">
@@ -1337,9 +1326,8 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
                     <button
                       type="submit"
                       disabled={(!inputText.trim() && !selectedPatient) || sending}
-                      className={`btn btn-sm btn-circle shrink-0 mb-0.5 ${
-                        editingMessage ? "btn-warning" : "btn-primary"
-                      }`}
+                      className={`btn btn-sm btn-circle shrink-0 mb-0.5 ${editingMessage ? "btn-warning" : "btn-primary"
+                        }`}
                       title={editingMessage ? "Save edit" : "Send message"}
                     >
                       {sending ? (
