@@ -22,6 +22,11 @@ import {
   cancelTimedSession,
 } from '@/services/api/timedServiceAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
+import {
+  getVitalsByPatient,
+  normalizeVitalsResponse,
+  getLatestVital,
+} from '@/services/api/vitalsAPI';
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils';
 
 const THERAPY_OPTIONS = [
@@ -103,6 +108,36 @@ export const TimedTherapyTab = ({
   useEffect(() => {
     loadSessions();
   }, [admissionId]);
+
+  const loadLatestVitals = async () => {
+    if (!patientId) return;
+    try {
+      const res = await getVitalsByPatient(patientId);
+      const list = normalizeVitalsResponse(res);
+      const scoped = dependantId
+        ? list.filter((v) => String(v?.dependantId || '') === String(dependantId))
+        : list.filter((v) => !v?.dependantId);
+      const latest = getLatestVital(scoped.length > 0 ? scoped : list);
+      if (latest) {
+        setStartForm((prev) => ({
+          ...prev,
+          startVitals: {
+            bp: latest.bp ? String(latest.bp) : '',
+            pulse: latest.pulse != null ? String(latest.pulse) : '',
+            spo2: latest.spo2 != null ? String(latest.spo2) : '',
+            temperature: latest.temperature != null ? String(latest.temperature) : '',
+            respiratoryRate: latest.respiratoryRate != null ? String(latest.respiratoryRate) : '',
+          },
+        }));
+      }
+    } catch (err) {
+      console.warn('Could not load latest patient vitals', err);
+    }
+  };
+
+  useEffect(() => {
+    loadLatestVitals();
+  }, [patientId, dependantId]);
 
   // Load relevant Service Charges for hourly pricing
   useEffect(() => {
@@ -230,6 +265,7 @@ export const TimedTherapyTab = ({
         <button
           onClick={() => {
             handleServiceTypeChange('oxygen');
+            loadLatestVitals();
             setIsStartModalOpen(true);
           }}
           className="btn btn-sm btn-primary rounded-xl gap-2 font-medium shadow-sm hover:shadow"

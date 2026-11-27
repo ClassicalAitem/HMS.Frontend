@@ -15,6 +15,7 @@ import {
 import api from '@/services/api/apiClient';
 import toast from 'react-hot-toast';
 import { administerMedication, getMedicationAdministrations } from '@/services/api/nurseAPI';
+import { updatePrescription } from '@/services/api/prescriptionsAPI';
 import {
   dispenseMedicationSlot,
   getMedicationDispenseSlots,
@@ -109,6 +110,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
   const [consumableSearch, setConsumableSearch] = useState('');
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState('');
   const [consumableNotes, setConsumableNotes] = useState('');
+  const [isStatOrder, setIsStatOrder] = useState(false);
   const [inventoryList, setInventoryList] = useState([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [submittingConsumables, setSubmittingConsumables] = useState(false);
@@ -117,6 +119,52 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
   // Billing and HMO status state
   const [billings, setBillings] = useState([]);
   const [patientHmo, setPatientHmo] = useState(null);
+  const [completingPrescriptionId, setCompletingPrescriptionId] = useState(null);
+
+  const activePrescriptions = useMemo(
+    () => prescriptions.filter((p) => String(p?.status || '').toLowerCase() !== 'completed'),
+    [prescriptions]
+  );
+
+  const completedPrescriptions = useMemo(
+    () => prescriptions.filter((p) => String(p?.status || '').toLowerCase() === 'completed'),
+    [prescriptions]
+  );
+
+  const handleCompleteTreatmentPlan = async (e, prescriptionId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!prescriptionId || completingPrescriptionId) return;
+    if (!window.confirm('Mark this active treatment plan as completed?')) return;
+    try {
+      setCompletingPrescriptionId(prescriptionId);
+      const res = await updatePrescription(prescriptionId, { status: 'completed' });
+      const updated = res?.data ?? res ?? {};
+      setPrescriptions((prev) =>
+        prev.map((p) =>
+          getId(p) === prescriptionId
+            ? {
+                ...p,
+                status: 'completed',
+                completedById: updated.completedById || p.completedById,
+                completedByName: updated.completedByName || p.completedByName,
+                completedAt: updated.completedAt || new Date().toISOString(),
+              }
+            : p
+        )
+      );
+      toast.success('Treatment plan marked as completed');
+    } catch (error) {
+      console.error('Failed to complete treatment plan:', error);
+      toast.error(
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          'Failed to complete treatment plan'
+      );
+    } finally {
+      setCompletingPrescriptionId(null);
+    }
+  };
 
   const fetchData = async () => {
     if (!admissionId) {
@@ -328,15 +376,18 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
         })),
         prescriptionId: selectedPrescriptionId || undefined,
         notes: consumableNotes.trim() || undefined,
+        priority: isStatOrder ? 'stat' : 'normal',
+        isStat: isStatOrder,
       };
 
       await orderTreatmentConsumables(admissionId, payload);
-      toast.success('Treatment plan consumables ordered successfully!');
+      toast.success(isStatOrder ? 'STAT order submitted!' : 'Treatment plan consumables ordered successfully!');
       setShowConsumablesModal(false);
       setSelectedConsumables([]);
       setConsumableSearch('');
       setConsumableNotes('');
       setSelectedPrescriptionId('');
+      setIsStatOrder(false);
       fetchData();
     } catch (error) {
       console.error('Failed to order consumables:', error);
@@ -424,14 +475,14 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
           </div>
 
           <div className="flex items-center gap-2">
-            {!isPharmacy && prescriptions.length > 0 && prescriptions[0]?.medications?.length > 0 && (
+            {!isPharmacy && activePrescriptions.length > 0 && activePrescriptions[0]?.medications?.length > 0 && (
               <button
                 type="button"
                 onClick={() =>
                   setScheduleModalData({
                     isOpen: true,
-                    prescription: prescriptions[0],
-                    medication: prescriptions[0].medications[0],
+                    prescription: activePrescriptions[0],
+                    medication: activePrescriptions[0].medications[0],
                     medicationIndex: 0,
                   })
                 }
@@ -456,38 +507,55 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
 
         {/* Prescriptions List */}
         <div className="p-4 space-y-6">
-          {prescriptions.length === 0 ? (
+          {activePrescriptions.length === 0 ? (
             <div className="bg-base-50 rounded-2xl border border-dashed border-base-200 p-8 text-center">
               <FaNotesMedical className="w-10 h-10 text-base-300 mx-auto mb-2" />
               <h3 className="text-base font-semibold text-base-content/80">No Active Prescriptions Found</h3>
               <p className="text-xs text-base-content/60 mt-1 max-w-md mx-auto">
-                There are currently no doctor medication prescriptions for this admission. You can still order treatment consumables below.
+                There are currently no active doctor medication prescriptions for this admission. You can still order treatment consumables below.
               </p>
             </div>
           ) : (
-            prescriptions.map((prescription, pIdx) => {
+            activePrescriptions.map((prescription, pIdx) => {
               const prescriptionId = getId(prescription) || `rx-${pIdx}`;
+              const isCompleting = completingPrescriptionId === prescriptionId;
               return (
                 <div
                   key={prescriptionId}
                   className="collapse collapse-arrow border border-base-200 rounded-xl overflow-hidden shadow-sm hover:border-primary/20 transition-all bg-base-100"
                 >
                   <input type="checkbox" defaultChecked={pIdx === 0} className="peer" />
-                  <div className="collapse-title bg-base-200/50 p-3 px-4 flex justify-between items-center border-b border-base-200">
-                    <div className="pr-8">
+                  <div className="collapse-title bg-base-200/50 p-3 px-4 flex justify-between items-center gap-2 border-b border-base-200">
+                    <div className="pr-4">
                       <p className="text-xs font-semibold text-base-content/70 uppercase tracking-wider">Prescription Details</p>
                       <p className="text-sm font-medium mt-0.5">
-                        Prescribed by {prescription.doctorName || 'Doctor'} â€¢{' '}
-                        {new Date(prescription.createdAt || Date.now()).toLocaleDateString(undefined, {
+                        Prescribed by {prescription.doctorName || 'Doctor'} •{' '}
+                        {new Date(prescription.createdAt || Date.now()).toLocaleString(undefined, {
                           weekday: 'short',
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </p>
                     </div>
-                    <div className="badge badge-primary badge-outline font-semibold z-10">
-                      {prescription.status || 'Active'}
+                    <div className="flex items-center gap-2 z-10 pr-6">
+                      {!isPharmacy && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleCompleteTreatmentPlan(e, prescriptionId)}
+                          disabled={isCompleting}
+                          className="btn btn-xs btn-success text-white rounded-lg gap-1 font-semibold shadow-xs"
+                          title="Mark this treatment plan as completed"
+                        >
+                          <FaCheckCircle className="w-3 h-3" />
+                          {isCompleting ? 'Completing...' : 'Complete Plan'}
+                        </button>
+                      )}
+                      <div className="badge badge-primary badge-outline font-semibold">
+                        {prescription.status || 'Active'}
+                      </div>
                     </div>
                   </div>
 
@@ -755,6 +823,87 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
               );
             })
           )}
+
+          {/* Completed Treatment Plans */}
+          {completedPrescriptions.length > 0 && (
+            <div className="pt-2 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-base-content/60 flex items-center gap-2">
+                <FaCheckCircle className="text-success" />
+                Completed Treatment Plans ({completedPrescriptions.length})
+              </h3>
+              <div className="space-y-3">
+                {completedPrescriptions.map((prescription, cIdx) => {
+                  const prescriptionId = getId(prescription) || `completed-rx-${cIdx}`;
+                  return (
+                    <div
+                      key={prescriptionId}
+                      className="collapse collapse-arrow border border-base-200 rounded-xl overflow-hidden bg-base-50/60 opacity-85"
+                    >
+                      <input type="checkbox" defaultChecked={false} className="peer" />
+                      <div className="collapse-title bg-base-200/40 p-3 px-4 flex justify-between items-center gap-2 border-b border-base-200">
+                        <div className="pr-4">
+                          <p className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                            Prescription Details
+                          </p>
+                          <p className="text-sm font-medium mt-0.5">
+                            Prescribed by {prescription.doctorName || 'Doctor'} •{' '}
+                            {new Date(prescription.createdAt || Date.now()).toLocaleString(undefined, {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        <div
+                          className="tooltip tooltip-left z-10 mr-6"
+                          data-tip={
+                            prescription.completedByName
+                              ? `Completed by ${prescription.completedByName}${
+                                  prescription.completedAt
+                                    ? ` • ${new Date(prescription.completedAt).toLocaleString(undefined, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}`
+                                    : ''
+                                }`
+                              : 'Completed'
+                          }
+                          title={
+                            prescription.completedByName
+                              ? `Completed by ${prescription.completedByName}`
+                              : 'Completed'
+                          }
+                        >
+                          <div className="badge badge-success badge-outline font-semibold cursor-help">
+                            Completed
+                          </div>
+                        </div>
+                      </div>
+                      <div className="collapse-content p-4 space-y-2">
+                        {(prescription.medications || []).map((med, mIdx) => (
+                          <div
+                            key={getId(med) || mIdx}
+                            className="flex flex-wrap items-center justify-between gap-2 text-sm bg-base-100 p-2.5 rounded-lg border border-base-200"
+                          >
+                            <span className="font-semibold text-base-content">{med.drugName}</span>
+                            <span className="text-xs text-base-content/70">
+                              {med.dosage || `${med.dosageAmount || ''} ${med.dosageUnit || ''}`.trim()} •{' '}
+                              {med.frequency} • {med.duration || '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Treatment Plan Consumables Section */}
@@ -818,17 +967,25 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
               {treatmentConsumables.map((order, orderIdx) => {
                 const orderId = getId(order) || `tc-${orderIdx}`;
                 const isDispensed = !!order.isDispensed;
+                const isStat = Boolean(order.isStat || String(order.priority || '').toLowerCase() === 'stat');
 
                 const consumableStatus = getConsumablePaymentStatus(order);
 
                 return (
                   <div
                     key={orderId}
-                    className="bg-base-100 rounded-xl border border-base-200 overflow-hidden shadow-xs hover:border-primary/30 transition-all"
+                    className={`bg-base-100 rounded-xl border overflow-hidden shadow-xs hover:border-primary/30 transition-all ${
+                      isStat && !isDispensed ? 'border-error/50' : 'border-base-200'
+                    }`}
                   >
                     {/* Order Header */}
                     <div className="p-3 px-4 bg-base-200/40 border-b border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
+                        {isStat && (
+                          <span className="badge badge-error text-white text-[11px] font-black tracking-wide shadow-xs">
+                            STAT
+                          </span>
+                        )}
                         <span className="text-xs font-bold text-base-content">
                           Ordered by {order.orderedByName || 'Nurse'}
                         </span>
@@ -1022,9 +1179,9 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                   <FaBoxOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-base-content">Order Consumables</h3>
+                  <h3 className="font-bold text-lg text-base-content">Order Consumables &amp; STAT Meds</h3>
                   <p className="text-xs text-base-content/70">
-                    Order syringes, needles, giving sets, dressings & consumables for this treatment plan.
+                    Order syringes, needles, giving sets, dressings, consumables, or STAT medications needed urgently.
                   </p>
                 </div>
               </div>
@@ -1069,6 +1226,38 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                 </div>
               )}
 
+              {/* Order Priority (Normal vs STAT) */}
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-base-200 bg-base-200/30">
+                <div>
+                  <p className="text-xs font-bold text-base-content uppercase tracking-wider">
+                    Order Urgency / Priority
+                  </p>
+                  <p className="text-[11px] text-base-content/60">
+                    Flag as STAT if the nurse needs this medication or consumable immediately.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsStatOrder(false)}
+                    className={`btn btn-xs rounded-lg ${
+                      !isStatOrder ? 'btn-neutral text-white' : 'btn-ghost border border-base-300'
+                    }`}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsStatOrder(true)}
+                    className={`btn btn-xs rounded-lg font-bold ${
+                      isStatOrder ? 'btn-error text-white' : 'btn-outline btn-error'
+                    }`}
+                  >
+                    STAT (Urgent)
+                  </button>
+                </div>
+              </div>
+
               {/* Search hospital inventory */}
               <div className="form-control w-full space-y-2">
                 <label className="label pb-0">
@@ -1080,7 +1269,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search consumable (e.g. syringe, needle, cotton wool, cannula, giving set, gloves)..."
+                    placeholder="Search consumable or STAT medication (e.g. syringe, cannula, paracetamol, hydrocortisone)..."
                     className="input input-bordered w-full rounded-xl pl-10 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm"
                     value={consumableSearch}
                     onChange={(e) => setConsumableSearch(e.target.value)}
